@@ -235,9 +235,18 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
+  /* Save priority with donation taken into account. */
+  int prev_priority = thread_get_priority();
+
   lock->holder = NULL;
   list_remove(&lock->elem);
   sema_up (&lock->semaphore);
+
+  /* If the priority with donation taken into account has decreased,
+     there was a thread waiting with a higher priority. So, yield. */
+  int curr_priority = thread_get_priority();
+  if (curr_priority < prev_priority)
+    thread_yield();
 }
 
 /* Returns true if the current thread holds LOCK, false
