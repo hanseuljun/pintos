@@ -364,7 +364,28 @@ thread_set_priority (int new_priority)
 int
 thread_get_priority (void) 
 {
-  return thread_current ()->priority;
+  int priority = thread_current ()->priority;
+  struct list_elem *lock_elem;
+  struct list_elem *waiter_elem;
+  struct list *acquired_lock_list = &thread_current ()->acquired_lock_list;
+
+  for (lock_elem = list_begin (acquired_lock_list); lock_elem != list_end (acquired_lock_list);
+       lock_elem = list_next (lock_elem))
+    {
+      struct lock *l = list_entry (lock_elem, struct lock, elem);
+      struct list *waiters = &l->semaphore.waiters;
+
+      for (waiter_elem = list_begin (waiters); waiter_elem != list_end (waiters);
+           waiter_elem = list_next (waiter_elem))
+        {
+          /* Iterate through every thread waiting due to the locks the current thread has acquired.
+             Have the waiting threads to donate their priority to the current thread. */
+          struct thread *t = list_entry(waiter_elem, struct thread, elem);
+          if (t->priority > priority)
+            priority = t->priority;
+        }
+    }
+  return priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -485,6 +506,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  list_init(&t->acquired_lock_list);
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
