@@ -547,14 +547,17 @@ next_thread_to_run (void)
 
   struct list_elem *e;
   struct thread *max_priority_thread = list_entry (list_begin (&ready_list), struct thread, elem);
+  int max_priority = get_thread_priority(max_priority_thread);
 
   for (e = list_begin (&ready_list); e != list_end (&ready_list);
        e = list_next (e))
     {
       struct thread *thread = list_entry (e, struct thread, elem);
-      if (thread->priority > max_priority_thread->priority)
+      int priority = get_thread_priority(thread);
+      if (priority > max_priority)
         {
           max_priority_thread = thread;
+          max_priority = priority;
         }
     }
   
