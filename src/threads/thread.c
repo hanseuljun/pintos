@@ -203,7 +203,7 @@ thread_create (const char *name, int priority,
   thread_unblock (t);
 
   /* Yield to new thread if it has higher priority. */
-  if (priority > thread_current ()->priority)
+  if (priority > thread_get_priority ())
     thread_yield();
 
   return tid;
@@ -345,12 +345,14 @@ thread_set_priority (int new_priority)
   bool should_yield = false;
 
   thread_current ()->priority = new_priority;
+  int current_thread_priority = thread_get_priority ();
 
   for (e = list_begin (&ready_list); e != list_end (&ready_list);
        e = list_next (e))
     {
       struct thread *t = list_entry (e, struct thread, elem);
-      if (t->priority > new_priority)
+      int priority = get_thread_priority (t);
+      if (priority > current_thread_priority)
         {
           should_yield = true;
           break;
