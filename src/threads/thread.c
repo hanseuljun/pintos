@@ -490,8 +490,9 @@ get_thread_priority (struct thread *t)
           /* Iterate through every thread waiting due to the locks the current thread has acquired.
              Have the waiting threads to donate their priority to the current thread. */
           struct thread *waiter_thread = list_entry(waiter_elem, struct thread, elem);
-          if (waiter_thread->priority > priority)
-            priority = waiter_thread->priority;
+          int waiter_thread_priority = get_thread_priority(waiter_thread);
+          if (waiter_thread_priority > priority)
+            priority = waiter_thread_priority;
         }
     }
   return priority;
