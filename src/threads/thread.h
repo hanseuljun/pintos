@@ -90,8 +90,8 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
-    struct list_elem elem;              /* List element for run threads list. */
-    struct list_elem waitelem;          /* List element for waiters list in semaphore. */
+    /* Shared between thread.c and synch.c. */
+    struct list_elem elem;
 
     /* List of locks this thread has acquired. */
     struct list acquired_lock_list;
