@@ -385,6 +385,14 @@ thread_get_nice (void)
   return 0;
 }
 
+/* Returns 100 times the current thread's recent_cpu value. */
+int
+thread_get_recent_cpu (void) 
+{
+  /* Not yet implemented. */
+  return 0;
+}
+
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
@@ -393,14 +401,20 @@ thread_get_load_avg (void)
   return 0;
 }
 
-/* Returns 100 times the current thread's recent_cpu value. */
+/* Returns the number of all threads. */
 int
-thread_get_recent_cpu (void) 
+thread_all_list_size (void)
 {
-  /* Not yet implemented. */
-  return 0;
+  return list_size(&all_list);
 }
-
+
+/* Returns the number of threads that are ready. */
+int
+thread_ready_list_size (void) 
+{
+  return list_size(&ready_list);
+}
+
 /* Idle thread.  Executes when no other thread is ready to run.
 
    The idle thread is initially put on the ready list by
