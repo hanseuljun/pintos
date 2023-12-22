@@ -102,7 +102,7 @@ sema_try_down (struct semaphore *sema)
 }
 
 /* Up or "V" operation on a semaphore.  Increments SEMA's value
-   and wakes up one thread of those waiting for SEMA, if any.
+   and wakes up all threads waiting for SEMA.
 
    This function may be called from an interrupt handler. */
 void
@@ -118,6 +118,8 @@ sema_up (struct semaphore *sema)
                                 struct thread, elem));
   sema->value++;
   intr_set_level (old_level);
+
+  thread_yield();
 }
 
 static void sema_test_helper (void *sema_);
@@ -235,18 +237,9 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  /* Save priority with donation taken into account. */
-  int prev_priority = thread_get_priority();
-
   lock->holder = NULL;
   list_remove(&lock->elem);
   sema_up (&lock->semaphore);
-
-  /* If the priority with donation taken into account has decreased,
-     there was a thread waiting with a higher priority. So, yield. */
-  int curr_priority = thread_get_priority();
-  if (curr_priority < prev_priority)
-    thread_yield();
 }
 
 /* Returns true if the current thread holds LOCK, false
