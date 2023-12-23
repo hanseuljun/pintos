@@ -36,7 +36,7 @@ bool lock_held_by_current_thread (const struct lock *);
 /* Condition variable. */
 struct condition 
   {
-    struct list waiters;        /* List of waiting threads. */
+    struct list waiters;        /* List of waiting semaphores. Type of elements is semaphore_elem. */
   };
 
 void cond_init (struct condition *);

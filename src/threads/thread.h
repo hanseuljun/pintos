@@ -144,4 +144,6 @@ int thread_get_load_avg (void);
 int thread_all_list_size (void);
 int thread_ready_list_size (void);
 
+int get_thread_priority (struct thread *t);
+
 #endif /* threads/thread.h */

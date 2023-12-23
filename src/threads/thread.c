@@ -66,7 +66,6 @@ static struct thread *running_thread (void);
 static struct thread *next_thread_to_run (void);
 static void init_thread (struct thread *, const char *name, int priority);
 static bool is_thread (struct thread *) UNUSED;
-static int get_thread_priority (struct thread *t);
 static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
@@ -415,6 +414,35 @@ thread_ready_list_size (void)
   return list_size(&ready_list);
 }
 
+/* Returns the thread's priority with priority-donation taken into account. */
+int
+get_thread_priority (struct thread *t)
+{
+  int priority = t->priority;
+  struct list_elem *e;
+  struct list_elem *ee;
+  struct list *acquired_lock_list = &t->acquired_lock_list;
+
+  for (e = list_begin (acquired_lock_list); e != list_end (acquired_lock_list);
+       e = list_next (e))
+    {
+      struct lock *l = list_entry (e, struct lock, elem);
+      struct list *waiters = &l->semaphore.waiters;
+
+      for (ee = list_begin (waiters); ee != list_end (waiters);
+           ee = list_next (ee))
+        {
+          /* Iterate through every thread waiting due to the locks the current thread has acquired.
+             Have the waiting threads to donate their priority to the current thread. */
+          struct thread *waiter_thread = list_entry (ee, struct thread, elem);
+          int waiter_thread_priority = get_thread_priority (waiter_thread);
+          if (waiter_thread_priority > priority)
+            priority = waiter_thread_priority;
+        }
+    }
+  return priority;
+}
+
 /* Idle thread.  Executes when no other thread is ready to run.
 
    The idle thread is initially put on the ready list by
@@ -485,35 +513,6 @@ is_thread (struct thread *t)
   return t != NULL && t->magic == THREAD_MAGIC;
 }
 
-/* Returns the thread's priority with priority-donation taken into account. */
-static int
-get_thread_priority (struct thread *t)
-{
-  int priority = t->priority;
-  struct list_elem *lock_elem;
-  struct list_elem *waiter_elem;
-  struct list *acquired_lock_list = &t->acquired_lock_list;
-
-  for (lock_elem = list_begin (acquired_lock_list); lock_elem != list_end (acquired_lock_list);
-       lock_elem = list_next (lock_elem))
-    {
-      struct lock *l = list_entry (lock_elem, struct lock, elem);
-      struct list *waiters = &l->semaphore.waiters;
-
-      for (waiter_elem = list_begin (waiters); waiter_elem != list_end (waiters);
-           waiter_elem = list_next (waiter_elem))
-        {
-          /* Iterate through every thread waiting due to the locks the current thread has acquired.
-             Have the waiting threads to donate their priority to the current thread. */
-          struct thread *waiter_thread = list_entry(waiter_elem, struct thread, elem);
-          int waiter_thread_priority = get_thread_priority(waiter_thread);
-          if (waiter_thread_priority > priority)
-            priority = waiter_thread_priority;
-        }
-    }
-  return priority;
-}
-
 /* Does basic initialization of T as a blocked thread named
    NAME. */
 static void
@@ -563,8 +562,8 @@ next_thread_to_run (void)
     return idle_thread;
 
   struct list_elem *e;
-  struct thread *max_priority_thread = list_entry (list_begin (&ready_list), struct thread, elem);
-  int max_priority = get_thread_priority(max_priority_thread);
+  struct thread *max_priority_thread = NULL;
+  int max_priority = PRI_MIN - 1;
 
   for (e = list_begin (&ready_list); e != list_end (&ready_list);
        e = list_next (e))
