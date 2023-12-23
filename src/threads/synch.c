@@ -268,7 +268,7 @@ cond_init (struct condition *cond)
 {
   ASSERT (cond != NULL);
 
-  list_init (&cond->waiters);
+  sema_init (&cond->semaphore, 0);
 }
 
 /* Atomically releases LOCK and waits for COND to be signaled by
@@ -294,17 +294,13 @@ cond_init (struct condition *cond)
 void
 cond_wait (struct condition *cond, struct lock *lock) 
 {
-  struct semaphore_elem waiter;
-
   ASSERT (cond != NULL);
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
   
-  sema_init (&waiter.semaphore, 0);
-  list_push_back (&cond->waiters, &waiter.elem);
   lock_release (lock);
-  sema_down (&waiter.semaphore);
+  sema_down (&cond->semaphore);
   lock_acquire (lock);
 }
 
@@ -323,37 +319,7 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
 
-  if (!list_empty (&cond->waiters)) 
-    sema_up (&list_entry (list_pop_front (&cond->waiters),
-                          struct semaphore_elem, elem)->semaphore);
-  
-  // ASSERT (!list_empty(&cond->waiters));
-
-  // struct list_elem *e;
-  // struct list_elem *ee;
-  // struct semaphore *max_priority_sema = NULL;
-  // int max_priority = PRI_MIN - 1;
-
-  // for (e = list_begin (&cond->waiters); e != list_end (&cond->waiters);
-  //      e = list_next (e))
-  //   {
-  //     struct semaphore *sema = &(list_entry (e, struct semaphore_elem, elem)->semaphore);
-  //     int sema_max_priority = PRI_MIN - 1;
-  //     for (ee = list_begin (&sema->waiters); e != list_end (&sema->waiters);
-  //          ee = list_next (ee))
-  //       {
-  //         struct thread *thread = list_entry (ee, struct thread, elem);
-  //         int priority = get_thread_priority (thread);
-  //         if (priority > max_priority)
-  //           {
-  //             max_priority_sema = sema;
-  //             max_priority = priority;
-  //           }
-  //       }
-  //   }
-  
-  // ASSERT (lock != NULL);
-  // sema_up(max_priority_sema);
+  sema_up (&cond->semaphore);
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
@@ -368,6 +334,6 @@ cond_broadcast (struct condition *cond, struct lock *lock)
   ASSERT (cond != NULL);
   ASSERT (lock != NULL);
 
-  while (!list_empty (&cond->waiters))
+  while (!list_empty (&cond->semaphore.waiters))
     cond_signal (cond, lock);
 }
