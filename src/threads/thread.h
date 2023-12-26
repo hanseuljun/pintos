@@ -103,6 +103,8 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+
+    float recent_cpu;
   };
 
 /* If false (default), use round-robin scheduler.
@@ -143,7 +145,5 @@ int thread_get_load_avg (void);
 
 int thread_all_list_size (void);
 int thread_ready_list_size (void);
-
-int get_thread_priority (struct thread *t);
 
 #endif /* threads/thread.h */

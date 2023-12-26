@@ -70,6 +70,7 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+static int get_thread_priority (struct thread *t);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -366,7 +367,15 @@ thread_set_priority (int new_priority)
 int
 thread_get_priority (void) 
 {
-  return get_thread_priority (thread_current ());
+  if (!thread_mlfqs)
+    return get_thread_priority (thread_current ());
+
+  int priority = PRI_MAX - thread_get_recent_cpu () / 4 - thread_get_nice() * 2;
+  if (priority < PRI_MIN)
+    return PRI_MIN;
+  if (priority > PRI_MAX)
+    return PRI_MAX;
+  return priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -412,35 +421,6 @@ int
 thread_ready_list_size (void) 
 {
   return list_size(&ready_list);
-}
-
-/* Returns the thread's priority with priority-donation taken into account. */
-int
-get_thread_priority (struct thread *t)
-{
-  int priority = t->priority;
-  struct list_elem *e;
-  struct list_elem *ee;
-  struct list *acquired_lock_list = &t->acquired_lock_list;
-
-  for (e = list_begin (acquired_lock_list); e != list_end (acquired_lock_list);
-       e = list_next (e))
-    {
-      struct lock *l = list_entry (e, struct lock, elem);
-      struct list *waiters = &l->semaphore.waiters;
-
-      for (ee = list_begin (waiters); ee != list_end (waiters);
-           ee = list_next (ee))
-        {
-          /* Iterate through every thread waiting due to the locks the current thread has acquired.
-             Have the waiting threads to donate their priority to the current thread. */
-          struct thread *waiter_thread = list_entry (ee, struct thread, elem);
-          int waiter_thread_priority = get_thread_priority (waiter_thread);
-          if (waiter_thread_priority > priority)
-            priority = waiter_thread_priority;
-        }
-    }
-  return priority;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -662,6 +642,35 @@ allocate_tid (void)
   lock_release (&tid_lock);
 
   return tid;
+}
+
+/* Returns the thread's priority with priority-donation taken into account. */
+int
+get_thread_priority (struct thread *t)
+{
+  int priority = t->priority;
+  struct list_elem *e;
+  struct list_elem *ee;
+  struct list *acquired_lock_list = &t->acquired_lock_list;
+
+  for (e = list_begin (acquired_lock_list); e != list_end (acquired_lock_list);
+       e = list_next (e))
+    {
+      struct lock *l = list_entry (e, struct lock, elem);
+      struct list *waiters = &l->semaphore.waiters;
+
+      for (ee = list_begin (waiters); ee != list_end (waiters);
+           ee = list_next (ee))
+        {
+          /* Iterate through every thread waiting due to the locks the current thread has acquired.
+             Have the waiting threads to donate their priority to the current thread. */
+          struct thread *waiter_thread = list_entry (ee, struct thread, elem);
+          int waiter_thread_priority = get_thread_priority (waiter_thread);
+          if (waiter_thread_priority > priority)
+            priority = waiter_thread_priority;
+        }
+    }
+  return priority;
 }
 
 /* Offset of `stack' member within `struct thread'.
