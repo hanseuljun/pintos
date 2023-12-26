@@ -4,6 +4,7 @@
 #include <random.h>
 #include <stdio.h>
 #include <string.h>
+#include "devices/timer.h"
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
@@ -59,6 +60,8 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
+static int load_avg;
+
 static void kernel_thread (thread_func *, void *aux);
 
 static void idle (void *aux UNUSED);
@@ -99,6 +102,8 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+
+  load_avg = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -134,6 +139,16 @@ thread_tick (void)
 #endif
   else
     kernel_ticks++;
+
+  /* Implementation of formula in Section B.4. */
+  if (timer_ticks () % TIMER_FREQ == 0)
+    {
+      /* ready_threads is the number of threads that are either running
+         or ready to run at time of update (not including the idle thread). */
+      size_t ready_threads = 1 + list_size (&ready_list);
+      load_avg = (load_avg * 59 + ready_threads * 100) / 60;
+      printf("load_avg: %d, ready_threads:%ld\n", load_avg, ready_threads);
+    }
 
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
@@ -370,7 +385,11 @@ thread_get_priority (void)
   if (!thread_mlfqs)
     return get_thread_priority (thread_current ());
 
-  int priority = PRI_MAX - thread_get_recent_cpu () / 4 - thread_get_nice() * 2;
+  /* Implementation of the below formula at Section B.2:
+     priority = PRI_MAX - (recent_cpu / 4) - (nice * 2).
+     400 instead of 4 since recent_cpu here is 100 times
+     the recent_cpu of Section B.2. */
+  int priority = PRI_MAX - thread_get_recent_cpu () / 400 - thread_get_nice () * 2;
   if (priority < PRI_MIN)
     return PRI_MIN;
   if (priority > PRI_MAX)
@@ -380,47 +399,30 @@ thread_get_priority (void)
 
 /* Sets the current thread's nice value to NICE. */
 void
-thread_set_nice (int nice UNUSED) 
+thread_set_nice (int nice) 
 {
-  /* Not yet implemented. */
+  thread_current ()->nice = nice;
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current ()->nice;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current ()->recent_cpu;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
-}
-
-/* Returns the number of all threads. */
-int
-thread_all_list_size (void)
-{
-  return list_size(&all_list);
-}
-
-/* Returns the number of threads that are ready. */
-int
-thread_ready_list_size (void) 
-{
-  return list_size(&ready_list);
+  return load_avg;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.

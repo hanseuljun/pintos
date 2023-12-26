@@ -104,7 +104,8 @@ struct thread
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
 
-    float recent_cpu;
+    int nice;
+    int recent_cpu;                     /* 100 times the recent_cpu of Section B.3. */
   };
 
 /* If false (default), use round-robin scheduler.
@@ -142,8 +143,5 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-
-int thread_all_list_size (void);
-int thread_ready_list_size (void);
 
 #endif /* threads/thread.h */
