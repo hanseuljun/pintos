@@ -60,7 +60,7 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
-static int load_avg;
+static int load_avg_times_thousand;
 
 static void kernel_thread (thread_func *, void *aux);
 
@@ -103,7 +103,7 @@ thread_init (void)
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
 
-  load_avg = 0;
+  load_avg_times_thousand = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -145,9 +145,20 @@ thread_tick (void)
     {
       /* ready_threads is the number of threads that are either running
          or ready to run at time of update (not including the idle thread). */
-      size_t ready_threads = 1 + list_size (&ready_list);
-      load_avg = (load_avg * 59 + ready_threads * 100) / 60;
-      printf("load_avg: %d, ready_threads:%ld\n", load_avg, ready_threads);
+      size_t ready_threads = list_size (&ready_list);
+      if (t != idle_thread)
+        {
+          ready_threads++;
+          printf("not idle\n");
+        }
+      else
+        {
+          printf("idle\n");
+        }
+
+      load_avg_times_thousand = (load_avg_times_thousand * 59 + ready_threads * 1000) / 60;
+      printf("load_avg_times_thousand: %d, ready_threads:%ld\n", load_avg_times_thousand, ready_threads);
+      printf("idle_ticks: %lld\n", idle_ticks);
     }
 
   /* Enforce preemption. */
@@ -422,7 +433,7 @@ thread_get_recent_cpu (void)
 int
 thread_get_load_avg (void) 
 {
-  return load_avg;
+  return load_avg_times_thousand / 10;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
