@@ -128,17 +128,32 @@ thread_start (void)
 void
 thread_tick (void) 
 {
-  struct thread *t = thread_current ();
+  struct thread *cur = thread_current ();
+  int64_t ticks = timer_ticks ();
+  struct list_elem *e;
+  struct thread *t;
 
   /* Update statistics. */
-  if (t == idle_thread)
+  if (cur == idle_thread)
     idle_ticks++;
 #ifdef USERPROG
-  else if (t->pagedir != NULL)
+  else if (cur->pagedir != NULL)
     user_ticks++;
 #endif
   else
     kernel_ticks++;
+
+  /* Awake sleeping threads. */
+  for (e = list_begin (&all_list); e != list_end (&all_list);
+        e = list_next (e))
+  {
+    t = list_entry (e, struct thread, allelem);
+    if (t->sleep_until_ticks > 0 && ticks >= t->sleep_until_ticks)
+      {
+        t->sleep_until_ticks = 0;
+        thread_unblock(t);
+      }
+  }
 
   /* Implementation of formula in Section B.4. */
   if (timer_ticks () % TIMER_FREQ == 0)
@@ -146,15 +161,23 @@ thread_tick (void)
       /* ready_threads is the number of threads that are either running
          or ready to run at time of update (not including the idle thread). */
       size_t ready_threads = list_size (&ready_list);
-      if (t != idle_thread)
-        {
-          ready_threads++;
-          printf("not idle\n");
-        }
-      else
-        {
-          printf("idle\n");
-        }
+      if (cur != idle_thread)
+        ready_threads++;
+
+      printf("current thread name: %s, status: %d\n", cur->name, cur->status);
+      // struct list_elem *e;
+      // for (e = list_begin (&ready_list); e != list_end (&ready_list);
+      //      e = list_next (e))
+      // {
+      //   struct thread *thread = list_entry (e, struct thread, elem);
+      //   printf("ready thread name: %s\n", thread->name);
+      // }
+      // for (e = list_begin (&all_list); e != list_end (&all_list);
+      //      e = list_next (e))
+      // {
+      //   struct thread *thread = list_entry (e, struct thread, allelem);
+      //   printf("all thread name: %s\n", thread->name);
+      // }
 
       load_avg_times_thousand = (load_avg_times_thousand * 59 + ready_threads * 1000) / 60;
       printf("load_avg_times_thousand: %d, ready_threads:%ld\n", load_avg_times_thousand, ready_threads);
@@ -342,6 +365,20 @@ thread_yield (void)
     list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
   schedule ();
+  intr_set_level (old_level);
+}
+
+void
+thread_sleep (int64_t ticks)
+{
+  struct thread *cur = thread_current ();
+  enum intr_level old_level;
+
+  old_level = intr_disable ();
+
+  cur->sleep_until_ticks = timer_ticks () + ticks;
+  thread_block ();
+
   intr_set_level (old_level);
 }
 

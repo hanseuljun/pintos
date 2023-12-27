@@ -88,6 +88,9 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
+    int64_t sleep_until_ticks;          /* When to wake up in ticks. */
+    int nice;
+    int recent_cpu;                     /* 100 times the recent_cpu of Section B.3. */
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
@@ -103,9 +106,6 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
-
-    int nice;
-    int recent_cpu;                     /* 100 times the recent_cpu of Section B.3. */
   };
 
 /* If false (default), use round-robin scheduler.
@@ -131,6 +131,7 @@ const char *thread_name (void);
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
+void thread_sleep (int64_t ticks);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
