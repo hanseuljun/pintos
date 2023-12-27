@@ -164,24 +164,7 @@ thread_tick (void)
       if (cur != idle_thread)
         ready_threads++;
 
-      printf("current thread name: %s, status: %d\n", cur->name, cur->status);
-      // struct list_elem *e;
-      // for (e = list_begin (&ready_list); e != list_end (&ready_list);
-      //      e = list_next (e))
-      // {
-      //   struct thread *thread = list_entry (e, struct thread, elem);
-      //   printf("ready thread name: %s\n", thread->name);
-      // }
-      // for (e = list_begin (&all_list); e != list_end (&all_list);
-      //      e = list_next (e))
-      // {
-      //   struct thread *thread = list_entry (e, struct thread, allelem);
-      //   printf("all thread name: %s\n", thread->name);
-      // }
-
       load_avg_times_thousand = (load_avg_times_thousand * 59 + ready_threads * 1000) / 60;
-      printf("load_avg_times_thousand: %d, ready_threads:%ld\n", load_avg_times_thousand, ready_threads);
-      printf("idle_ticks: %lld\n", idle_ticks);
     }
 
   /* Enforce preemption. */
