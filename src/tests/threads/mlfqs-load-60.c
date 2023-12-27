@@ -131,6 +131,7 @@ test_mlfqs_load_60 (void)
   
   for (i = 0; i < 90; i++) 
     {
+      printf("i: %d\n", i);
       int64_t sleep_until = start_time + TIMER_FREQ * (2 * i + 10);
       int load_avg;
       timer_sleep (sleep_until - timer_ticks ());

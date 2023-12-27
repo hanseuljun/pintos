@@ -60,7 +60,7 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
-static int load_avg_times_thousand;
+static struct fixed_point load_avg;
 
 static void kernel_thread (thread_func *, void *aux);
 
@@ -103,7 +103,7 @@ thread_init (void)
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
 
-  load_avg_times_thousand = 0;
+  fixed_point_init(&load_avg, 0);
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -155,16 +155,47 @@ thread_tick (void)
       }
   }
 
+  /* On each timer tick, the running thread's recent_cpu is incremented by 1. */
+  fixed_point_add_int(&cur->recent_cpu, 1);
+
   /* Implementation of formula in Section B.4. */
   if (timer_ticks () % TIMER_FREQ == 0)
     {
+      for (e = list_begin (&all_list); e != list_end (&all_list);
+            e = list_next (e))
+      {
+        /* Fixed-point implmentation of formula:
+           recent_cpu = (2*load_avg)/(2*load_avg + 1) * recent_cpu + nice. */
+        struct fixed_point multiplier;
+        fixed_point_copy(&multiplier, &load_avg);
+        fixed_point_multiply_int(&multiplier, 2);
+
+        struct fixed_point divisor;
+        fixed_point_copy(&divisor, &multiplier);
+        fixed_point_add_int(&divisor, 1);
+
+        fixed_point_multiply(&cur->recent_cpu, &multiplier);
+        fixed_point_divide(&cur->recent_cpu, &divisor);
+        fixed_point_add_int(&cur->recent_cpu, cur->nice);
+      }
+
       /* ready_threads is the number of threads that are either running
          or ready to run at time of update (not including the idle thread). */
-      size_t ready_threads = list_size (&ready_list);
+      int ready_threads = (int) list_size (&ready_list);
       if (cur != idle_thread)
         ready_threads++;
 
-      load_avg_times_thousand = (load_avg_times_thousand * 59 + ready_threads * 1000) / 60;
+
+      /* Fixed-point implmentation of formula:
+         load_avg = (59/60)*load_avg + (1/60)*ready_threads. */
+      fixed_point_multiply_int(&load_avg, 59);
+      printf("ready_list: %ld\n", list_size (&ready_list));
+      printf("all_list: %ld\n", list_size (&all_list));
+      printf("ready_threads: %d\n", ready_threads);
+      fixed_point_add_int(&load_avg, ready_threads * 100);
+      fixed_point_divide_int(&load_avg, 60);
+      printf("ticks: %lld, load_avg: %d\n", timer_ticks () % TIMER_FREQ, fixed_point_to_int(&load_avg));
+      printf("load_avg: %d\n", load_avg.integer / (1 << 14));
     }
 
   /* Enforce preemption. */
@@ -446,14 +477,14 @@ thread_get_nice (void)
 int
 thread_get_recent_cpu (void) 
 {
-  return thread_current ()->recent_cpu;
+  return fixed_point_to_int (&thread_current ()->recent_cpu);
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  return load_avg_times_thousand / 10;
+  return fixed_point_to_int(&load_avg);
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
