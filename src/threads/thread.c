@@ -143,6 +143,7 @@ thread_tick (void)
   else
     kernel_ticks++;
 
+  bool unblocked_sleeping_thread = false;
   /* Awake sleeping threads. */
   for (e = list_begin (&all_list); e != list_end (&all_list);
         e = list_next (e))
@@ -152,6 +153,7 @@ thread_tick (void)
       {
         t->sleep_until_ticks = 0;
         thread_unblock(t);
+        unblocked_sleeping_thread = true;
       }
   }
 
@@ -166,17 +168,15 @@ thread_tick (void)
       {
         /* Fixed-point implmentation of formula:
            recent_cpu = (2*load_avg)/(2*load_avg + 1) * recent_cpu + nice. */
-        struct fixed_point multiplier;
-        fixed_point_copy(&multiplier, &load_avg);
-        fixed_point_multiply_int(&multiplier, 2);
+        struct fixed_point multiplier = fixed_point_get_copied (&load_avg);
+        fixed_point_multiply_int (&multiplier, 2);
 
-        struct fixed_point divisor;
-        fixed_point_copy(&divisor, &multiplier);
-        fixed_point_add_int(&divisor, 1);
+        struct fixed_point divisor = fixed_point_get_copied (&multiplier);
+        fixed_point_add_int (&divisor, 1);
 
-        fixed_point_multiply(&cur->recent_cpu, &multiplier);
-        fixed_point_divide(&cur->recent_cpu, &divisor);
-        fixed_point_add_int(&cur->recent_cpu, cur->nice);
+        fixed_point_multiply (&cur->recent_cpu, &multiplier);
+        fixed_point_divide (&cur->recent_cpu, &divisor);
+        fixed_point_add_int (&cur->recent_cpu, cur->nice);
       }
 
       /* ready_threads is the number of threads that are either running
@@ -187,19 +187,19 @@ thread_tick (void)
 
 
       /* Fixed-point implmentation of formula:
-         load_avg = (59/60)*load_avg + (1/60)*ready_threads. */
+         load_avg = (59/60)*load_avg + (1/60)*ready_threads.  */
       fixed_point_multiply_int(&load_avg, 59);
-      printf("ready_list: %ld\n", list_size (&ready_list));
-      printf("all_list: %ld\n", list_size (&all_list));
-      printf("ready_threads: %d\n", ready_threads);
-      fixed_point_add_int(&load_avg, ready_threads * 100);
+      fixed_point_add_int(&load_avg, ready_threads);
       fixed_point_divide_int(&load_avg, 60);
-      printf("ticks: %lld, load_avg: %d\n", timer_ticks () % TIMER_FREQ, fixed_point_to_int(&load_avg));
-      printf("load_avg: %d\n", load_avg.integer / (1 << 14));
+
+      struct fixed_point load_avg_times_hundred = fixed_point_get_multiplied_int (&load_avg, 100);
+      printf("load_avg * 100: %d\n", fixed_point_to_int (&load_avg_times_hundred));
     }
 
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
+    intr_yield_on_return ();
+  else if (unblocked_sleeping_thread)
     intr_yield_on_return ();
 }
 
@@ -444,14 +444,19 @@ thread_set_priority (int new_priority)
 int
 thread_get_priority (void) 
 {
+  struct thread *cur = thread_current ();
   if (!thread_mlfqs)
-    return get_thread_priority (thread_current ());
+    return get_thread_priority (cur);
 
   /* Implementation of the below formula at Section B.2:
      priority = PRI_MAX - (recent_cpu / 4) - (nice * 2).
      400 instead of 4 since recent_cpu here is 100 times
      the recent_cpu of Section B.2. */
-  int priority = PRI_MAX - thread_get_recent_cpu () / 400 - thread_get_nice () * 2;
+  struct fixed_point priority_fp = fixed_point_create (PRI_MAX);
+  struct fixed_point divided_recent_cpu = fixed_point_get_divided_int (&cur->recent_cpu, 4);
+  fixed_point_substract (&priority_fp, &divided_recent_cpu);
+  fixed_point_add_int (&priority_fp, -(cur->nice * 2));
+  int priority = fixed_point_to_int (&priority_fp);
   if (priority < PRI_MIN)
     return PRI_MIN;
   if (priority > PRI_MAX)
@@ -477,14 +482,16 @@ thread_get_nice (void)
 int
 thread_get_recent_cpu (void) 
 {
-  return fixed_point_to_int (&thread_current ()->recent_cpu);
+  struct fixed_point recent_cpu_times_hundred = fixed_point_get_multiplied_int(&thread_current ()->recent_cpu, 100);
+  return fixed_point_to_int (&recent_cpu_times_hundred);
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  return fixed_point_to_int(&load_avg);
+  struct fixed_point load_avg_times_hundred = fixed_point_get_multiplied_int(&load_avg, 100);
+  return fixed_point_to_int(&load_avg_times_hundred);
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.

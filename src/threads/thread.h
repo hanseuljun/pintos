@@ -91,7 +91,7 @@ struct thread
     int priority;                       /* Priority. */
     int64_t sleep_until_ticks;          /* When to wake up in ticks. */
     int nice;
-    struct fixed_point recent_cpu;      /* 100 times the recent_cpu of Section B.3. */
+    struct fixed_point recent_cpu;      /* recent_cpu of Section B.3. */
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
