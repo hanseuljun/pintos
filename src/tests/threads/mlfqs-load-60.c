@@ -132,19 +132,12 @@ test_mlfqs_load_60 (void)
   // printf ("start_time: %lld\n", start_time);
   for (i = 0; i < 90; i++) 
     {
-      // printf ("i: %d\n", i);
       int64_t sleep_until = start_time + TIMER_FREQ * (2 * i + 10);
-      // printf ("timer_ticks - 1: %lld\n", timer_ticks ());
       int load_avg;
-      // printf ("sleep_until: %lld\n", sleep_until);
-      // printf ("timer_ticks - 2: %lld\n", timer_ticks ());
       timer_sleep (sleep_until - timer_ticks ());
-      // printf ("timer_ticks - 3: %lld\n", timer_ticks ());
       load_avg = thread_get_load_avg ();
-      // printf ("timer_ticks - 4: %lld\n", timer_ticks ());
       msg ("After %d seconds, load average=%d.%02d.",
            i * 2, load_avg / 100, load_avg % 100);
-      // printf ("timer_ticks - 5: %lld\n", timer_ticks ());
     }
 }
 

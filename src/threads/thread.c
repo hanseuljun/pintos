@@ -153,19 +153,11 @@ thread_tick (void)
       t = list_entry (e, struct thread, allelem);
       if (ticks >= t->sleep_until)
         {
-          // printf("ticks: %lld, sleep_until: %lld\n", ticks, t->sleep_until);
-
           t->sleep_until = INT64_MAX;
           thread_unblock (t);
           unblocked_sleeping_thread = true;
         }
     }
-
-  // if (unblocked_sleeping_thread)
-    // printf ("unblocked_sleeping_thread is true\n");
-  // printf ("unblocked_sleeping_thread: %d\n", unblocked_sleeping_thread);
-  // printf ("ready_list size: %ld\n", list_size (&ready_list));
-  // printf ("all_list size: %ld\n", list_size (&all_list));
 
   /* On each timer tick, the running thread's recent_cpu is incremented by 1. */
   fixed_point_add_int (&cur->recent_cpu, 1);
@@ -173,8 +165,6 @@ thread_tick (void)
   /* Implementation of formula in Section B.4. */
   if (timer_ticks () % TIMER_FREQ == 0)
     {
-      // printf("idle_ticks: %lld\n", idle_ticks);
-      // printf("kernel_ticks: %lld\n", kernel_ticks);
       for (e = list_begin (&all_list); e != list_end (&all_list);
             e = list_next (e))
       {
@@ -195,21 +185,13 @@ thread_tick (void)
          or ready to run at time of update (not including the idle thread). */
       int ready_threads = (int) list_size (&ready_list);
       if (cur != idle_thread)
-        ready_threads++;
-
+        ++ready_threads;
 
       /* Fixed-point implmentation of formula:
          load_avg = (59/60)*load_avg + (1/60)*ready_threads.  */
       fixed_point_multiply_int (&load_avg, 59);
       fixed_point_add_int (&load_avg, ready_threads);
       fixed_point_divide_int (&load_avg, 60);
-
-      // struct fixed_point load_avg_times_hundred = fixed_point_get_multiplied_int (&load_avg, 100);
-      // printf ("load_avg * 100: %d\n", fixed_point_to_int (&load_avg_times_hundred));
-      // printf ("thread name: %s\n", thread_name ());
-
-      printf("name: %s\n", thread_name ());
-      printf("elapsed time: %lld\n", timer_elapsed(ticks));
     }
 
   /* Enforce preemption. */
@@ -410,8 +392,6 @@ thread_sleep (int64_t sleep_until)
   thread_block ();
 
   intr_set_level (old_level);
-
-  // printf("thread_sleep: %lld\n", sleep_until);
 }
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
