@@ -168,6 +168,7 @@ thread_tick (void)
       for (e = list_begin (&all_list); e != list_end (&all_list);
             e = list_next (e))
       {
+        t = list_entry (e, struct thread, allelem);
         /* Fixed-point implmentation of formula:
            recent_cpu = (2*load_avg)/(2*load_avg + 1) * recent_cpu + nice. */
         struct fixed_point multiplier = fixed_point_get_copied (&load_avg);
@@ -176,9 +177,9 @@ thread_tick (void)
         struct fixed_point divisor = fixed_point_get_copied (&multiplier);
         fixed_point_add_int (&divisor, 1);
 
-        fixed_point_multiply (&cur->recent_cpu, &multiplier);
-        fixed_point_divide (&cur->recent_cpu, &divisor);
-        fixed_point_add_int (&cur->recent_cpu, cur->nice);
+        fixed_point_multiply (&t->recent_cpu, &multiplier);
+        fixed_point_divide (&t->recent_cpu, &divisor);
+        fixed_point_add_int (&t->recent_cpu, t->nice);
       }
 
       /* ready_threads is the number of threads that are either running
