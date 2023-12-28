@@ -89,7 +89,7 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
-    int64_t sleep_until_ticks;          /* When to wake up in ticks. */
+    int64_t sleep_until;                /* When to wake up in ticks. */
     int nice;
     struct fixed_point recent_cpu;      /* recent_cpu of Section B.3. */
     struct list_elem allelem;           /* List element for all threads list. */
@@ -132,7 +132,7 @@ const char *thread_name (void);
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
-void thread_sleep (int64_t ticks);
+void thread_sleep (int64_t sleep_until);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);

@@ -74,6 +74,8 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 static int get_thread_priority (struct thread *t);
+static int get_thread_priority_default (struct thread *t);
+static int get_thread_priority_mlfqs (struct thread *t);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -132,6 +134,7 @@ thread_tick (void)
   int64_t ticks = timer_ticks ();
   struct list_elem *e;
   struct thread *t;
+  bool unblocked_sleeping_thread = false;
 
   /* Update statistics. */
   if (cur == idle_thread)
@@ -143,26 +146,35 @@ thread_tick (void)
   else
     kernel_ticks++;
 
-  bool unblocked_sleeping_thread = false;
   /* Awake sleeping threads. */
   for (e = list_begin (&all_list); e != list_end (&all_list);
         e = list_next (e))
-  {
-    t = list_entry (e, struct thread, allelem);
-    if (t->sleep_until_ticks > 0 && ticks >= t->sleep_until_ticks)
-      {
-        t->sleep_until_ticks = 0;
-        thread_unblock(t);
-        unblocked_sleeping_thread = true;
-      }
-  }
+    {
+      t = list_entry (e, struct thread, allelem);
+      if (ticks >= t->sleep_until)
+        {
+          // printf("ticks: %lld, sleep_until: %lld\n", ticks, t->sleep_until);
+
+          t->sleep_until = INT64_MAX;
+          thread_unblock (t);
+          unblocked_sleeping_thread = true;
+        }
+    }
+
+  // if (unblocked_sleeping_thread)
+    // printf ("unblocked_sleeping_thread is true\n");
+  // printf ("unblocked_sleeping_thread: %d\n", unblocked_sleeping_thread);
+  // printf ("ready_list size: %ld\n", list_size (&ready_list));
+  // printf ("all_list size: %ld\n", list_size (&all_list));
 
   /* On each timer tick, the running thread's recent_cpu is incremented by 1. */
-  fixed_point_add_int(&cur->recent_cpu, 1);
+  fixed_point_add_int (&cur->recent_cpu, 1);
 
   /* Implementation of formula in Section B.4. */
   if (timer_ticks () % TIMER_FREQ == 0)
     {
+      // printf("idle_ticks: %lld\n", idle_ticks);
+      // printf("kernel_ticks: %lld\n", kernel_ticks);
       for (e = list_begin (&all_list); e != list_end (&all_list);
             e = list_next (e))
       {
@@ -188,12 +200,16 @@ thread_tick (void)
 
       /* Fixed-point implmentation of formula:
          load_avg = (59/60)*load_avg + (1/60)*ready_threads.  */
-      fixed_point_multiply_int(&load_avg, 59);
-      fixed_point_add_int(&load_avg, ready_threads);
-      fixed_point_divide_int(&load_avg, 60);
+      fixed_point_multiply_int (&load_avg, 59);
+      fixed_point_add_int (&load_avg, ready_threads);
+      fixed_point_divide_int (&load_avg, 60);
 
-      struct fixed_point load_avg_times_hundred = fixed_point_get_multiplied_int (&load_avg, 100);
-      printf("load_avg * 100: %d\n", fixed_point_to_int (&load_avg_times_hundred));
+      // struct fixed_point load_avg_times_hundred = fixed_point_get_multiplied_int (&load_avg, 100);
+      // printf ("load_avg * 100: %d\n", fixed_point_to_int (&load_avg_times_hundred));
+      // printf ("thread name: %s\n", thread_name ());
+
+      printf("name: %s\n", thread_name ());
+      printf("elapsed time: %lld\n", timer_elapsed(ticks));
     }
 
   /* Enforce preemption. */
@@ -383,17 +399,19 @@ thread_yield (void)
 }
 
 void
-thread_sleep (int64_t ticks)
+thread_sleep (int64_t sleep_until)
 {
   struct thread *cur = thread_current ();
   enum intr_level old_level;
 
   old_level = intr_disable ();
 
-  cur->sleep_until_ticks = timer_ticks () + ticks;
+  cur->sleep_until = sleep_until;
   thread_block ();
 
   intr_set_level (old_level);
+
+  // printf("thread_sleep: %lld\n", sleep_until);
 }
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
@@ -444,24 +462,7 @@ thread_set_priority (int new_priority)
 int
 thread_get_priority (void) 
 {
-  struct thread *cur = thread_current ();
-  if (!thread_mlfqs)
-    return get_thread_priority (cur);
-
-  /* Implementation of the below formula at Section B.2:
-     priority = PRI_MAX - (recent_cpu / 4) - (nice * 2).
-     400 instead of 4 since recent_cpu here is 100 times
-     the recent_cpu of Section B.2. */
-  struct fixed_point priority_fp = fixed_point_create (PRI_MAX);
-  struct fixed_point divided_recent_cpu = fixed_point_get_divided_int (&cur->recent_cpu, 4);
-  fixed_point_substract (&priority_fp, &divided_recent_cpu);
-  fixed_point_add_int (&priority_fp, -(cur->nice * 2));
-  int priority = fixed_point_to_int (&priority_fp);
-  if (priority < PRI_MIN)
-    return PRI_MIN;
-  if (priority > PRI_MAX)
-    return PRI_MAX;
-  return priority;
+  return get_thread_priority (thread_current ());
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -580,6 +581,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->sleep_until = INT64_MAX;
   t->magic = THREAD_MAGIC;
   list_init(&t->acquired_lock_list);
 
@@ -719,6 +721,12 @@ allocate_tid (void)
 int
 get_thread_priority (struct thread *t)
 {
+  return thread_mlfqs ? get_thread_priority_mlfqs(t) : get_thread_priority_default(t);
+}
+
+int
+get_thread_priority_default (struct thread *t)
+{
   int priority = t->priority;
   struct list_elem *e;
   struct list_elem *ee;
@@ -743,7 +751,27 @@ get_thread_priority (struct thread *t)
     }
   return priority;
 }
-
+
+int
+get_thread_priority_mlfqs (struct thread *t)
+{
+  /* Implementation of the below formula at Section B.2:
+     priority = PRI_MAX - (recent_cpu / 4) - (nice * 2).
+     400 instead of 4 since recent_cpu here is 100 times
+     the recent_cpu of Section B.2. */
+  struct fixed_point priority_fp = fixed_point_create (PRI_MAX);
+  struct fixed_point divided_recent_cpu = fixed_point_get_divided_int (&t->recent_cpu, 4);
+  fixed_point_substract (&priority_fp, &divided_recent_cpu);
+  fixed_point_add_int (&priority_fp, -(t->nice * 2));
+
+  int priority = fixed_point_to_int (&priority_fp);
+  if (priority < PRI_MIN)
+    return PRI_MIN;
+  if (priority > PRI_MAX)
+    return PRI_MAX;
+  return priority;
+}
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
