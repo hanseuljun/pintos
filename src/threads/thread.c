@@ -266,7 +266,7 @@ thread_create (const char *name, int priority,
 
   /* Yield to new thread if it has higher priority. */
   if (priority > thread_get_priority ())
-    thread_yield();
+    thread_yield ();
 
   return tid;
 }
@@ -368,6 +368,10 @@ thread_exit (void)
 void
 thread_yield (void) 
 {
+  /* Ignore when thread has not started yet. */
+  if (list_size (&all_list) <= 1)
+    return;
+
   struct thread *cur = thread_current ();
   enum intr_level old_level;
   
