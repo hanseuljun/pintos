@@ -31,6 +31,7 @@ process_execute (const char *file_name)
   char *fn_copy;
   tid_t tid;
 
+  printf ("process_execute - 1\n");
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -38,10 +39,12 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  printf ("process_execute - 2\n");
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+  printf ("process_execute - 3\n");
   return tid;
 }
 
@@ -54,6 +57,7 @@ start_process (void *file_name_)
   struct intr_frame if_;
   bool success;
 
+  printf ("start_process - 1\n");
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -61,10 +65,12 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
+  printf ("start_process - 2\n");
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
+  printf ("start_process - 3\n");
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in

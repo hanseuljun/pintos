@@ -16,5 +16,27 @@ static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
   printf ("system call!\n");
+  int number = *((int *) f->esp);
+  printf ("syscall number: %d\n", number);
+
+  switch (number)
+    {
+      case SYS_WRITE:
+        printf ("SYS_WRITE\n");
+        int fd = ((int *) f->esp)[1];
+        const void *buffer = ((int *) f->esp)[2];
+        unsigned size = ((int *) f->esp)[3];
+        printf ("fd: %d\n", fd);
+        printf ("buffer: %p\n", buffer);
+        printf ("size: %d\n", size);
+        printf ("buffer string: %s\n", (const char *) buffer);
+
+        if (fd == STDOUT_FILENO)
+          {
+            printf (buffer);
+          }
+        break;
+    }
+
   thread_exit ();
 }
