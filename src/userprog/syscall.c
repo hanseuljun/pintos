@@ -24,19 +24,23 @@ syscall_handler (struct intr_frame *f UNUSED)
       case SYS_WRITE:
         printf ("SYS_WRITE\n");
         int fd = ((int *) f->esp)[1];
-        const void *buffer = ((int *) f->esp)[2];
+        const void *buffer = (const void *) ((int *) f->esp)[2];
         unsigned size = ((int *) f->esp)[3];
         printf ("fd: %d\n", fd);
-        printf ("buffer: %p\n", buffer);
+        // printf ("buffer: %p\n", buffer);
+        // printf ("PHYS_BASE: %d\n", PHYS_BASE);
         printf ("size: %d\n", size);
-        printf ("buffer string: %s\n", (const char *) buffer);
+        // printf ("buffer string: %s\n", (const char *) buffer);
 
         if (fd == STDOUT_FILENO)
           {
-            printf (buffer);
+            printf ("%s\n", (const char *) buffer);
+            f->eax = 0;
           }
         break;
     }
 
-  thread_exit ();
+  
+  printf ("thread name: %s\n", thread_name ());
+  // thread_exit ();
 }
