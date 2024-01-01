@@ -13,29 +13,28 @@ syscall_init (void)
 }
 
 static void
-syscall_handler (struct intr_frame *f UNUSED) 
+syscall_handler (struct intr_frame *f) 
 {
   printf ("system call!\n");
-  int number = *((int *) f->esp);
+  int *arguments = f->esp;
+  int number = arguments[0];
   printf ("syscall number: %d\n", number);
 
   switch (number)
     {
       case SYS_WRITE:
-        printf ("SYS_WRITE\n");
-        int fd = ((int *) f->esp)[1];
-        const void *buffer = (const void *) ((int *) f->esp)[2];
-        unsigned size = ((int *) f->esp)[3];
-        printf ("fd: %d\n", fd);
+        int fd = arguments[1];
+        const void *buffer = (const void *) arguments[2];
+        // unsigned size = (unsigned) arguments[3];
+        // printf ("fd: %d\n", fd);
         // printf ("buffer: %p\n", buffer);
         // printf ("PHYS_BASE: %d\n", PHYS_BASE);
-        printf ("size: %d\n", size);
+        // printf ("size: %d\n", size);
         // printf ("buffer string: %s\n", (const char *) buffer);
 
         if (fd == STDOUT_FILENO)
           {
-            printf ("%s\n", (const char *) buffer);
-            f->eax = 0;
+            printf ((const char *) buffer);
           }
         break;
     }
