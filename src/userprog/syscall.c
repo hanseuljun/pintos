@@ -19,9 +19,13 @@ syscall_handler (struct intr_frame *f)
   int *arguments = f->esp;
   int number = arguments[0];
   printf ("syscall number: %d\n", number);
+  printf ("thread name: %s\n", thread_name ());
 
   switch (number)
     {
+      case SYS_EXIT:
+        thread_exit ();
+        NOT_REACHED ();
       case SYS_WRITE:
         int fd = arguments[1];
         const void *buffer = (const void *) arguments[2];
@@ -38,8 +42,4 @@ syscall_handler (struct intr_frame *f)
           }
         break;
     }
-
-  
-  printf ("thread name: %s\n", thread_name ());
-  // thread_exit ();
 }
