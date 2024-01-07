@@ -28,6 +28,7 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
+  printf ("file_name: %s\n", file_name);
   char *fn_copy;
   tid_t tid;
 
@@ -50,6 +51,7 @@ process_execute (const char *file_name)
 static void
 start_process (void *file_name_)
 {
+  printf ("start_process - 1\n");
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
@@ -60,6 +62,7 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
+  printf ("start_process - 2, success: %d, eip: %p\n", success, if_.eip);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -72,6 +75,7 @@ start_process (void *file_name_)
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
+  printf ("start_process - 3\n");
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
 }
@@ -88,10 +92,12 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED)
 {
+  /*
   while (true)
     {
       thread_yield ();
     }
+    */
   return -1;
 }
 
@@ -312,6 +318,34 @@ load (const char *file_name, void (**eip) (void), void **esp)
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
 
+  /* Pass arguments. */
+  // TODO: It is just a placeholder level of an implementation yet. Complete this.
+  // See 3.5.1 Program Startup Details.
+  *esp -= 1;
+  *((char *)*esp) = '\0';
+  *esp -= 1;
+  *((char *)*esp) = 'c';
+  *esp -= 1;
+  *((char *)*esp) = 'b';
+  *esp -= 1;
+  *((char *)*esp) = 'a';
+  char *arg0_ptr = *esp;
+
+  *esp -= 4;
+  *((int *)*esp) = arg0_ptr;
+  char *argv0_ptr = *esp;
+
+  *esp -= 4;
+  *((int *)*esp) = argv0_ptr;
+
+  // argc
+  *esp -= 4;
+  *((int *)*esp) = 1;
+
+  // return address
+  *esp -= 4;
+  *((int *)*esp) = 0;
+
   success = true;
 
  done:
@@ -441,7 +475,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 12;
+        *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
     }

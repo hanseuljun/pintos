@@ -16,6 +16,9 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   printf ("system call!\n");
+  thread_exit ();
+
+  /*
   int *arguments = f->esp;
   int number = arguments[0];
   printf ("syscall number: %d\n", number);
@@ -42,4 +45,5 @@ syscall_handler (struct intr_frame *f)
           }
         break;
     }
+    */
 }
