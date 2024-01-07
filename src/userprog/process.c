@@ -321,6 +321,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
   /* Pass arguments. */
   // TODO: It is just a placeholder level of an implementation yet. Complete this.
   // See 3.5.1 Program Startup Details.
+
+  // argv[0][...]
   *esp -= 1;
   *((char *)*esp) = '\0';
   *esp -= 1;
@@ -331,12 +333,18 @@ load (const char *file_name, void (**eip) (void), void **esp)
   *((char *)*esp) = 'a';
   char *arg0_ptr = *esp;
 
+  // argv[1]
   *esp -= 4;
-  *((int *)*esp) = arg0_ptr;
+  *((int *)*esp) = NULL;
+
+  // argv[0]
+  *esp -= 4;
+  *((char **)*esp) = arg0_ptr;
   char *argv0_ptr = *esp;
 
+  // argv
   *esp -= 4;
-  *((int *)*esp) = argv0_ptr;
+  *((char **)*esp) = argv0_ptr;
 
   // argc
   *esp -= 4;
