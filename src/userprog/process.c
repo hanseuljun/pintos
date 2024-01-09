@@ -28,7 +28,6 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
-  printf ("file_name: %s\n", file_name);
   char *fn_copy;
   tid_t tid;
 
@@ -51,7 +50,6 @@ process_execute (const char *file_name)
 static void
 start_process (void *file_name_)
 {
-  printf ("start_process - 1\n");
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
@@ -62,7 +60,6 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
-  printf ("start_process - 2, success: %d, eip: %p\n", success, if_.eip);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -75,7 +72,6 @@ start_process (void *file_name_)
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
-  printf ("start_process - 3\n");
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
 }

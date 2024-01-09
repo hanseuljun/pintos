@@ -15,11 +15,11 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  printf ("system call!\n");
+  // printf ("system call!\n");
   int *arguments = f->esp;
   int number = arguments[0];
-  printf ("syscall number: %d\n", number);
-  printf ("thread name: %s\n", thread_name ());
+  // printf ("syscall number: %d\n", number);
+  // printf ("thread name: %s\n", thread_name ());
 
   switch (number)
     {
