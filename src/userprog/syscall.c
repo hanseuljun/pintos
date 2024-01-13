@@ -24,18 +24,13 @@ syscall_handler (struct intr_frame *f)
   switch (number)
     {
       case SYS_EXIT:
+        int status = arguments[1];
+        printf ("%s: exit(%d)\n", thread_name (), status);
         thread_exit ();
         NOT_REACHED ();
       case SYS_WRITE:
         int fd = arguments[1];
         const void *buffer = (const void *) arguments[2];
-        // unsigned size = (unsigned) arguments[3];
-        // printf ("fd: %d\n", fd);
-        // printf ("buffer: %p\n", buffer);
-        // printf ("PHYS_BASE: %d\n", PHYS_BASE);
-        // printf ("size: %d\n", size);
-        // printf ("buffer string: %s\n", (const char *) buffer);
-
         if (fd == STDOUT_FILENO)
           {
             printf ((const char *) buffer);

@@ -18,6 +18,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+#define MAX_THREAD_NAME_LENGTH 128
 #define MAX_CMDLINE_LENGTH 128
 
 static thread_func start_process NO_RETURN;
@@ -32,6 +33,17 @@ process_execute (const char *cmdline)
 {
   char *fn_copy;
   tid_t tid;
+  int i;
+
+  /* Obtain first token of cmdline as the new thread's name .*/
+  char thread_name[MAX_THREAD_NAME_LENGTH + 1];
+  for (i = 0; cmdline[i] != '\0' && cmdline[i] != ' '; i++)
+    {
+      if (i >= MAX_THREAD_NAME_LENGTH)
+        return TID_ERROR;
+      thread_name[i] = cmdline[i];
+    }
+  thread_name[i] = '\0';
 
   /* Make a copy of CMDLINE.
      Otherwise there's a race between the caller and load(). */
@@ -41,7 +53,7 @@ process_execute (const char *cmdline)
   strlcpy (fn_copy, cmdline, PGSIZE);
 
   /* Create a new thread to execute CMDLINE. */
-  tid = thread_create (cmdline, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (thread_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -258,7 +270,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
     }
 
   /* Copy cmdline into a modifiable array. */
-  char tokened_cmdline[MAX_CMDLINE_LENGTH];
+  char tokened_cmdline[MAX_CMDLINE_LENGTH + 1];
   strlcpy (tokened_cmdline, cmdline, MAX_CMDLINE_LENGTH);
 
   size_t token_offsets[MAX_CMDLINE_LENGTH];
