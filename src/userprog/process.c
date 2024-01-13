@@ -18,7 +18,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
-#define MAX_CMDLINE_LENGTH 1024
+#define MAX_CMDLINE_LENGTH 128
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -261,12 +261,12 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   char tokened_cmdline[MAX_CMDLINE_LENGTH];
   strlcpy (tokened_cmdline, cmdline, MAX_CMDLINE_LENGTH);
 
-  char *token_starts[MAX_CMDLINE_LENGTH];
+  size_t token_offsets[MAX_CMDLINE_LENGTH];
   size_t token_count = 0;
   char *token, *save_ptr;
   for (token = strtok_r (tokened_cmdline, " ", &save_ptr); token != NULL;
        token = strtok_r (NULL, " ", &save_ptr))
-    token_starts[token_count++] = token;
+    token_offsets[token_count++] = token - tokened_cmdline;
 
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
@@ -368,24 +368,21 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   // TODO: It is just a placeholder level of an implementation yet. Complete this.
   // See 3.5.1 Program Startup Details.
 
-  // argv[0][...]
-  *esp -= 1;
-  *((char *)*esp) = '\0';
-  *esp -= 1;
-  *((char *)*esp) = 'c';
-  *esp -= 1;
-  *((char *)*esp) = 'b';
-  *esp -= 1;
-  *((char *)*esp) = 'a';
+  // argv[...][...]
+  printf ("tokened_cmdline: %s\n", tokened_cmdline);
+  printf ("esp: %p\n", *esp);
+  *esp -= cmdline_len + 1;
+  memcpy(*esp, tokened_cmdline, cmdline_len);
+  esp[cmdline_len] = '\0';
   char *arg0_ptr = *esp;
 
-  // argv[1]
+  // argv[last]
   *esp -= 4;
   *((int *)*esp) = NULL;
 
   // argv[0]
   *esp -= 4;
-  *((char **)*esp) = arg0_ptr;
+  *((char **)*esp) = arg0_ptr + (size_t)token_offsets[1];
   char *argv0_ptr = *esp;
 
   // argv
