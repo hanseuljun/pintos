@@ -18,6 +18,8 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+#define MAX_CMDLINE_LENGTH 1024
+
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -247,14 +249,33 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
+  /* Prepare splitting cmdline into tokens. */
+  size_t cmdline_len = strlen(cmdline);
+  if (cmdline_len >= MAX_CMDLINE_LENGTH)
+    {
+      printf ("load filed: cmdline is too long (%zu)", cmdline_len);
+      goto done;
+    }
+
+  /* Copy cmdline into a modifiable array. */
+  char tokened_cmdline[MAX_CMDLINE_LENGTH];
+  strlcpy (tokened_cmdline, cmdline, MAX_CMDLINE_LENGTH);
+
+  char *token_starts[MAX_CMDLINE_LENGTH];
+  size_t token_count = 0;
+  char *token, *save_ptr;
+  for (token = strtok_r (tokened_cmdline, " ", &save_ptr); token != NULL;
+       token = strtok_r (NULL, " ", &save_ptr))
+    token_starts[token_count++] = token;
+
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
     goto done;
   process_activate ();
 
-  // TODO: Put only the first word of cmdline to file_name.
-  const char *file_name = cmdline;
+  /* First token contains the file name. */
+  const char *file_name = tokened_cmdline;
 
   /* Open executable file. */
   file = filesys_open (file_name);
