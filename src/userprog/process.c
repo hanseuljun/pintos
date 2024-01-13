@@ -365,12 +365,10 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   *eip = (void (*) (void)) ehdr.e_entry;
 
   /* Pass arguments. */
-  // TODO: It is just a placeholder level of an implementation yet. Complete this.
+  // TODO: Implement word-align.
   // See 3.5.1 Program Startup Details.
 
   // argv[...][...]
-  printf ("tokened_cmdline: %s\n", tokened_cmdline);
-  printf ("esp: %p\n", *esp);
   *esp -= cmdline_len + 1;
   memcpy(*esp, tokened_cmdline, cmdline_len);
   esp[cmdline_len] = '\0';
@@ -380,9 +378,12 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   *esp -= 4;
   *((int *)*esp) = NULL;
 
-  // argv[0]
-  *esp -= 4;
-  *((char **)*esp) = arg0_ptr + (size_t)token_offsets[1];
+  // argv[...]
+  for (i = token_count - 1; i >= 0; i--)
+    {
+      *esp -= 4;
+      *((char **)*esp) = arg0_ptr + (size_t)token_offsets[i];
+    }
   char *argv0_ptr = *esp;
 
   // argv
@@ -391,7 +392,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
 
   // argc
   *esp -= 4;
-  *((int *)*esp) = 1;
+  *((int *)*esp) = token_count;
 
   // return address
   *esp -= 4;
