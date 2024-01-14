@@ -19,12 +19,9 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   struct thread *cur = thread_current ();
-  uint32_t *pd = cur->pagedir;
-  // printf ("thread name: %s\n", cur->name);
-  // printf ("pd: %p\n", pd);
-  // printf ("init_page_dir: %p\n", init_page_dir);
-  // TODO: Improve the memory access checking happening here. 
+  struct uint32_t *pd = cur->pagedir;
   // printf ("esp: %p\n", f->esp);
+  // printf ("&_end_bss: %p\n", &_end_bss);
   /* 0x08048000 is the starting address of the code segment.
      It is safe to assume the stack pointer is pointing an invalid
      address if it is pointing below here.
@@ -32,6 +29,7 @@ syscall_handler (struct intr_frame *f)
   if ((size_t)f->esp < 0x08048000)
     syscall_exit (-1);
   int number = (int) get_argument (f->esp, 0);
+  // printf ("number: %d\n", number);
 
   switch (number)
     {
@@ -42,13 +40,22 @@ syscall_handler (struct intr_frame *f)
         break;
       case SYS_CREATE:
         const char *file = (const char *) get_argument(f->esp, 1);
+        if (pagedir_get_page(pd, file) == NULL)
+          {
+            syscall_exit (-1);
+            NOT_REACHED ();
+          }
+          printf ("file: %s\n", file);
         if (file == NULL)
           {
             syscall_exit (-1);
             NOT_REACHED ();
           }
-        // TODO: Create file. Currently faking success.
-        f->eax = 0;
+        else
+          {
+            // TODO: Create file. Currently faking success.
+            f->eax = true;
+          }
         break;
       case SYS_WRITE:
         int fd = (int) get_argument(f->esp, 1);
