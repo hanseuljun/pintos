@@ -386,9 +386,16 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   esp[cmdline_len] = '\0';
   char *arg0_ptr = *esp;
 
+  int word_align_len = (4 - ((cmdline_len + 1) % 4)) % 4;
+  for (i = 0; i < word_align_len; i++)
+    {
+      *esp -= 1;
+      *((uint8_t *)*esp) = 0;
+    }
+
   // argv[last]
   *esp -= 4;
-  *((int *)*esp) = NULL;
+  *((int *)*esp) = 0;
 
   // argv[...]
   for (i = token_count - 1; i >= 0; i--)

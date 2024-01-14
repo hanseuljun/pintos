@@ -16,16 +16,18 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
+  // TODO: Improve the memory access checking happening here. 
+  // printf ("esp: %p\n", f->esp);
   /* 0x08084000 is the starting point of the code segment,
      which is a very safe lower bound for detecting
      bad memory access. */
-  if (f->esp < 0x08084000)
-    syscall_exit(-1);
+  if ((size_t)f->esp < 0x08084000)
+    syscall_exit (-1);
   /* 0xbffffffc is where the program arguments should be at.
      0xbffffffc is chosen as a safe upper bound for detecting
      bad memory access. */
-  if (f->esp >= 0xbffffffc)
-    syscall_exit(-1);
+  if ((size_t)f->esp >= 0xbffffffc)
+    syscall_exit (-1);
   int *arguments = f->esp;
   int number = arguments[0];
 
@@ -35,7 +37,14 @@ syscall_handler (struct intr_frame *f)
         int status = arguments[1];
         syscall_exit (status);
         NOT_REACHED ();
+        break;
       case SYS_CREATE:
+        const char *file = (const char *)arguments[1];
+        if (file == NULL)
+          {
+            syscall_exit (-1);
+            NOT_REACHED ();
+          }
         // TODO: Create file. Currently faking success.
         f->eax = 0;
         break;
