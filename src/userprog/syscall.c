@@ -7,6 +7,8 @@
 
 static void syscall_handler (struct intr_frame *);
 static void syscall_exit (int status);
+static bool syscall_create (const char *file);
+static void syscall_write (int fd, void *buffer);
 static uint32_t get_argument (void *esp, size_t idx);
 
 void
@@ -18,8 +20,6 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  struct thread *cur = thread_current ();
-  struct uint32_t *pd = cur->pagedir;
   // printf ("esp: %p\n", f->esp);
   // printf ("&_end_bss: %p\n", &_end_bss);
   /* 0x08048000 is the starting address of the code segment.
@@ -40,31 +40,12 @@ syscall_handler (struct intr_frame *f)
         break;
       case SYS_CREATE:
         const char *file = (const char *) get_argument(f->esp, 1);
-        if (pagedir_get_page(pd, file) == NULL)
-          {
-            syscall_exit (-1);
-            NOT_REACHED ();
-          }
-          printf ("file: %s\n", file);
-        if (file == NULL)
-          {
-            syscall_exit (-1);
-            NOT_REACHED ();
-          }
-        else
-          {
-            // TODO: Create file. Currently faking success.
-            f->eax = true;
-          }
+        f->eax = syscall_create (file);
         break;
       case SYS_WRITE:
         int fd = (int) get_argument(f->esp, 1);
         const void *buffer = (const void *)get_argument(f->esp, 2);
-        // printf ("buffer: %p\n", buffer);
-        if (fd == STDOUT_FILENO)
-          {
-            printf ((const char *) buffer);
-          }
+        syscall_write (fd, buffer);
         break;
     }
 }
@@ -74,6 +55,37 @@ static void syscall_exit (int status)
   printf ("%s: exit(%d)\n", thread_name (), status);
   thread_exit ();
   NOT_REACHED ();
+}
+
+static bool syscall_create (const char *file)
+{
+  struct thread *t = thread_current ();
+
+  if (pagedir_get_page(t->pagedir, file) == NULL)
+    {
+      syscall_exit (-1);
+      NOT_REACHED ();
+    }
+    // printf ("file: %s\n", file);
+  if (file == NULL)
+    {
+      syscall_exit (-1);
+      NOT_REACHED ();
+    }
+  else
+    {
+      // TODO: Create file. Currently faking success.
+      return true;
+    }
+}
+
+static void syscall_write (int fd, void *buffer)
+{
+  if (fd == STDOUT_FILENO)
+    {
+      printf ((const char *) buffer);
+    }
+  // TOOD: Implement other cases.
 }
 
 static uint32_t get_argument (void *esp, size_t idx)
