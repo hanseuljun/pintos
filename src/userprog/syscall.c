@@ -1,13 +1,14 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include "filesys/filesys.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
 static void syscall_handler (struct intr_frame *);
 static void syscall_exit (int status);
-static bool syscall_create (const char *file);
+static bool syscall_create (const char *file, unsigned initial_size);
 static void syscall_write (int fd, void *buffer);
 static uint32_t get_argument (void *esp, size_t idx);
 
@@ -40,7 +41,8 @@ syscall_handler (struct intr_frame *f)
         break;
       case SYS_CREATE:
         const char *file = (const char *) get_argument(f->esp, 1);
-        f->eax = syscall_create (file);
+        unsigned *initial_size = (unsigned) get_argument(f->esp, 2);
+        f->eax = syscall_create (file, initial_size);
         break;
       case SYS_WRITE:
         int fd = (int) get_argument(f->esp, 1);
@@ -57,26 +59,29 @@ static void syscall_exit (int status)
   NOT_REACHED ();
 }
 
-static bool syscall_create (const char *file)
+static bool syscall_create (const char *file, unsigned initial_size)
 {
   struct thread *t = thread_current ();
 
-  if (pagedir_get_page(t->pagedir, file) == NULL)
+  /* Exit when file is pointing an invalid address. */
+  if (pagedir_get_page (t->pagedir, file) == NULL)
     {
       syscall_exit (-1);
       NOT_REACHED ();
     }
-    // printf ("file: %s\n", file);
+  /* Exit when file is NULL. */
   if (file == NULL)
     {
       syscall_exit (-1);
       NOT_REACHED ();
     }
-  else
+  /* Fail when file name is an empty string. */
+  if (file[0] == '\0')
     {
-      // TODO: Create file. Currently faking success.
-      return true;
+      return false;
     }
+  // TODO: Create file. Currently faking success.
+  return filesys_create (file, initial_size);
 }
 
 static void syscall_write (int fd, void *buffer)
