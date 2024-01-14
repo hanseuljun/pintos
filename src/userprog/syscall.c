@@ -3,9 +3,11 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 
 static void syscall_handler (struct intr_frame *);
 static void syscall_exit (int status);
+static uint32_t get_argument (void *esp, size_t idx);
 
 void
 syscall_init (void) 
@@ -16,30 +18,29 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
+  struct thread *cur = thread_current ();
+  uint32_t *pd = cur->pagedir;
+  // printf ("thread name: %s\n", cur->name);
+  printf ("pd: %p\n", pd);
+  // printf ("init_page_dir: %p\n", init_page_dir);
   // TODO: Improve the memory access checking happening here. 
-  // printf ("esp: %p\n", f->esp);
+  printf ("esp: %p\n", f->esp);
   /* 0x08084000 is the starting point of the code segment,
      which is a very safe lower bound for detecting
      bad memory access. */
   if ((size_t)f->esp < 0x08084000)
     syscall_exit (-1);
-  /* 0xbffffffc is where the program arguments should be at.
-     0xbffffffc is chosen as a safe upper bound for detecting
-     bad memory access. */
-  if ((size_t)f->esp >= 0xbffffffc)
-    syscall_exit (-1);
-  int *arguments = f->esp;
-  int number = arguments[0];
+  int number = (int) get_argument (f->esp, 0);
 
   switch (number)
     {
       case SYS_EXIT:
-        int status = arguments[1];
+        int status = (int) get_argument(f->esp, 1);
         syscall_exit (status);
         NOT_REACHED ();
         break;
       case SYS_CREATE:
-        const char *file = (const char *)arguments[1];
+        const char *file = (const char *) get_argument(f->esp, 1);
         if (file == NULL)
           {
             syscall_exit (-1);
@@ -49,8 +50,9 @@ syscall_handler (struct intr_frame *f)
         f->eax = 0;
         break;
       case SYS_WRITE:
-        int fd = arguments[1];
-        const void *buffer = (const void *) arguments[2];
+        int fd = (int) get_argument(f->esp, 1);
+        const void *buffer = (const void *)get_argument(f->esp, 2);
+        printf ("buffer: %p\n", buffer);
         if (fd == STDOUT_FILENO)
           {
             printf ((const char *) buffer);
@@ -64,4 +66,16 @@ static void syscall_exit (int status)
   printf ("%s: exit(%d)\n", thread_name (), status);
   thread_exit ();
   NOT_REACHED ();
+}
+
+static uint32_t get_argument (void *esp, size_t idx)
+{
+  uint32_t *addr = ((int *) esp) + idx;
+  printf ("get_argument, addr: %p\n", addr);
+  if (!is_user_vaddr (addr))
+    {
+      syscall_exit (-1);
+      NOT_REACHED ();
+    }
+  return *addr;
 }
