@@ -5,6 +5,7 @@
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "userprog/pagedir.h"
+#include "userprog/process.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
@@ -19,11 +20,13 @@ static struct file *file_map[FILE_MAP_SIZE];
 
 static void syscall_handler (struct intr_frame *);
 static void syscall_exit (void *esp);
+static int syscall_exec (void *esp);
+static int syscall_wait (void *esp);
 static bool syscall_create (void *esp);
 static int syscall_open (void *esp);
 static int syscall_filesize (void *esp);
 static int syscall_read (void *esp);
-static void syscall_write (void *esp);
+static int syscall_write (void *esp);
 static void syscall_close (void *esp);
 static uint32_t get_argument (void *esp, size_t idx);
 static void exit(int status);
@@ -57,6 +60,12 @@ syscall_handler (struct intr_frame *f)
       case SYS_EXIT:
         syscall_exit (f->esp);
         NOT_REACHED ();
+      case SYS_EXEC:
+        f->eax = syscall_exec(f->esp);
+        return;
+      case SYS_WAIT:
+        f->eax = syscall_wait(f->esp);
+        return;
       case SYS_CREATE:
         f->eax = syscall_create (f->esp);
         return;
@@ -70,7 +79,7 @@ syscall_handler (struct intr_frame *f)
         f->eax = syscall_read (f->esp);
         return;
       case SYS_WRITE:
-        syscall_write (f->esp);
+        f->eax = syscall_write (f->esp);
         return;
       case SYS_CLOSE:
         syscall_close (f->esp);
@@ -86,6 +95,18 @@ static void syscall_exit (void *esp)
   int status = (int) get_argument(esp, 1);
   exit (status);
   NOT_REACHED ();
+}
+
+static int syscall_exec (void *esp)
+{
+  const char *cmd_line = (const char *) get_argument(esp, 1);
+  return process_execute (cmd_line);
+}
+
+static int syscall_wait (void *esp)
+{
+  int pid = (int) get_argument(esp, 1);
+  return process_wait (pid);
 }
 
 static bool syscall_create (void *esp)
@@ -170,15 +191,30 @@ static int syscall_read (void *esp)
   return file_read (file, buffer, size);
 }
 
-static void syscall_write (void *esp)
+static int syscall_write (void *esp)
 {
   int fd = (int) get_argument(esp, 1);
   const void *buffer = (const void *)get_argument(esp, 2);
-  if (fd == STDOUT_FILENO)
+  unsigned size = (unsigned) get_argument(esp, 3);
+
+  /* Exit when buffer is pointing an invalid address. */
+  if (!is_uaddr_valid (buffer))
     {
-      printf ((const char *) buffer);
+      exit (-1);
+      NOT_REACHED ();
     }
-  // TOOD: Implement other cases.
+
+  if (fd == STDOUT_FILENO)
+    return printf ((const char *) buffer);
+
+  if (!is_fd_for_file_map (fd))
+    {
+      exit (-1);
+      NOT_REACHED ();
+    }
+
+  struct file *file = file_map[fd - FD_BASE];
+  return file_write (file, buffer, size);
 }
 
 static void syscall_close (void *esp)
