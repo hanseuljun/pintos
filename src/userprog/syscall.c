@@ -43,6 +43,9 @@ syscall_handler (struct intr_frame *f)
   number = (int) get_argument (f->esp, 0);
   switch (number)
     {
+      case SYS_HALT:
+        shutdown_power_off ();
+        NOT_REACHED ();
       case SYS_EXIT:
         syscall_exit (f->esp);
         NOT_REACHED ();
