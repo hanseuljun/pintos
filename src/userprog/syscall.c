@@ -19,6 +19,7 @@ static void syscall_exit (void *esp);
 static bool syscall_create (void *esp);
 static int syscall_open (void *esp);
 static void syscall_write (void *esp);
+static void syscall_close (void *esp);
 static uint32_t get_argument (void *esp, size_t idx);
 static void exit(int status);
 static int find_available_fd (void);
@@ -57,6 +58,8 @@ syscall_handler (struct intr_frame *f)
         return;
       case SYS_WRITE:
         syscall_write (f->esp);
+        return;
+      case SYS_CLOSE:
         return;
     }
   
@@ -134,6 +137,17 @@ static void syscall_write (void *esp)
       printf ((const char *) buffer);
     }
   // TOOD: Implement other cases.
+}
+
+static void syscall_close (void *esp)
+{
+  int fd = (int) get_argument(esp, 1);
+  if (fd < FD_BASE)
+    exit (-1);
+  if (fd >= (FD_BASE + FILE_MAP_SIZE))
+    return;
+  struct file *file = file_map[fd - FD_BASE];
+  file_close (file);
 }
 
 static uint32_t get_argument (void *esp, size_t idx)
