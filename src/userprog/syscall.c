@@ -18,11 +18,14 @@ static void syscall_handler (struct intr_frame *);
 static void syscall_exit (void *esp);
 static bool syscall_create (void *esp);
 static int syscall_open (void *esp);
+static int syscall_filesize (void *esp);
+static int syscall_read (void *esp);
 static void syscall_write (void *esp);
 static void syscall_close (void *esp);
 static uint32_t get_argument (void *esp, size_t idx);
 static void exit(int status);
 static int find_available_fd (void);
+static bool is_uaddr_valid (void *uaddr);
 
 void
 syscall_init (void) 
@@ -56,10 +59,17 @@ syscall_handler (struct intr_frame *f)
       case SYS_OPEN:
         f->eax = syscall_open (f->esp);
         return;
+      case SYS_FILESIZE:
+        f->eax = syscall_filesize (f->esp);
+        return;
+      case SYS_READ:
+        f->eax = syscall_read (f->esp);
+        return;
       case SYS_WRITE:
         syscall_write (f->esp);
         return;
       case SYS_CLOSE:
+        syscall_close (f->esp);
         return;
     }
   
@@ -78,10 +88,9 @@ static bool syscall_create (void *esp)
 {
   const char *file_name = (const char *) get_argument(esp, 1);
   unsigned *initial_size = (unsigned) get_argument(esp, 2);
-  struct thread *t = thread_current ();
 
   /* Exit when file_name is pointing an invalid address. */
-  if (pagedir_get_page (t->pagedir, file_name) == NULL)
+  if (!is_uaddr_valid (file_name))
     {
       exit (-1);
       NOT_REACHED ();
@@ -108,7 +117,7 @@ static int syscall_open (void *esp)
   struct file *file;
 
   /* Exit when file_name is pointing an invalid address. */
-  if (pagedir_get_page (t->pagedir, file_name) == NULL)
+  if (!is_uaddr_valid (file_name))
     {
       exit (-1);
       NOT_REACHED ();
@@ -126,6 +135,30 @@ static int syscall_open (void *esp)
   int fd = find_available_fd ();
   file_map[fd - FD_BASE] = file;
   return fd;
+}
+
+static int syscall_filesize (void *esp)
+{
+  int fd = (int) get_argument(esp, 1);
+  struct file *file = file_map[fd - FD_BASE];
+  return file_length (file);
+}
+
+static int syscall_read (void *esp)
+{
+  int fd = (int) get_argument(esp, 1);
+  const void *buffer = (const void *) get_argument(esp, 2);
+  unsigned size = (unsigned) get_argument(esp, 3);
+
+  /* Exit when buffer is pointing an invalid address. */
+  if (!is_uaddr_valid (buffer))
+    {
+      exit (-1);
+      NOT_REACHED ();
+    }
+
+  struct file *file = file_map[fd - FD_BASE];
+  return file_read (file, buffer, size);
 }
 
 static void syscall_write (void *esp)
@@ -179,4 +212,15 @@ static int find_available_fd (void)
 
   printf ("Ran out of fd values.\n");
   NOT_REACHED ();
+}
+
+static bool is_uaddr_valid (void *uaddr)
+{
+  struct thread *t;
+
+  if (!is_user_vaddr (uaddr))
+    return false;
+
+  t = thread_current ();
+  return pagedir_get_page (t->pagedir, uaddr) != NULL;
 }
