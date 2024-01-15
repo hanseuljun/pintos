@@ -1,7 +1,10 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include "devices/shutdown.h"
+#include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "userprog/pagedir.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
@@ -25,8 +28,8 @@ static void syscall_close (void *esp);
 static uint32_t get_argument (void *esp, size_t idx);
 static void exit(int status);
 static int find_available_fd (void);
-static bool is_uaddr_valid (void *uaddr);
-static bool is_fd_valid (int fd);
+static bool is_uaddr_valid (const void *uaddr);
+static bool is_fd_for_file_map (int fd);
 
 void
 syscall_init (void) 
@@ -88,7 +91,7 @@ static void syscall_exit (void *esp)
 static bool syscall_create (void *esp)
 {
   const char *file_name = (const char *) get_argument(esp, 1);
-  unsigned *initial_size = (unsigned) get_argument(esp, 2);
+  unsigned initial_size = (unsigned) get_argument(esp, 2);
 
   /* Exit when file_name is pointing an invalid address. */
   if (!is_uaddr_valid (file_name))
@@ -114,7 +117,6 @@ static bool syscall_create (void *esp)
 static int syscall_open (void *esp)
 {
   const char *file_name = (const char *) get_argument(esp, 1);
-  struct thread *t = thread_current ();
   struct file *file;
 
   /* Exit when file_name is pointing an invalid address. */
@@ -148,10 +150,10 @@ static int syscall_filesize (void *esp)
 static int syscall_read (void *esp)
 {
   int fd = (int) get_argument(esp, 1);
-  const void *buffer = (const void *) get_argument(esp, 2);
+  void *buffer = (void *) get_argument(esp, 2);
   unsigned size = (unsigned) get_argument(esp, 3);
 
-  if (!is_fd_valid (fd))
+  if (!is_fd_for_file_map (fd))
     {
       exit (-1);
       NOT_REACHED ();
@@ -182,7 +184,7 @@ static void syscall_write (void *esp)
 static void syscall_close (void *esp)
 {
   int fd = (int) get_argument(esp, 1);
-  if (!is_fd_valid (fd))
+  if (!is_fd_for_file_map (fd))
     {
       exit (-1);
       NOT_REACHED ();
@@ -230,7 +232,7 @@ static int find_available_fd (void)
   NOT_REACHED ();
 }
 
-static bool is_uaddr_valid (void *uaddr)
+static bool is_uaddr_valid (const void *uaddr)
 {
   struct thread *t;
 
@@ -241,7 +243,7 @@ static bool is_uaddr_valid (void *uaddr)
   return pagedir_get_page (t->pagedir, uaddr) != NULL;
 }
 
-static bool is_fd_valid (int fd)
+static bool is_fd_for_file_map (int fd)
 {
   return (fd >= FD_BASE) && (fd < (FD_BASE + FILE_MAP_SIZE));
 }
