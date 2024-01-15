@@ -176,11 +176,25 @@ static void syscall_close (void *esp)
 {
   int fd = (int) get_argument(esp, 1);
   if (fd < FD_BASE)
-    exit (-1);
+    {
+      exit (-1);
+      NOT_REACHED ();
+    }
   if (fd >= (FD_BASE + FILE_MAP_SIZE))
-    return;
+    {
+      exit (-1);
+      NOT_REACHED ();
+    }
+
   struct file *file = file_map[fd - FD_BASE];
+  if (file == NULL)
+    {
+      exit (-1);
+      NOT_REACHED ();
+    }
+
   file_close (file);
+  file_map[fd - FD_BASE] = NULL;
 }
 
 static uint32_t get_argument (void *esp, size_t idx)
