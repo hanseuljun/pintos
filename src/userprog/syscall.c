@@ -100,7 +100,15 @@ static void syscall_exit (void *esp)
 static int syscall_exec (void *esp)
 {
   const char *cmd_line = (const char *) get_argument(esp, 1);
-  return process_execute (cmd_line);
+  /* Exit when cmd_line is pointing an invalid address. */
+  if (!is_uaddr_valid (cmd_line))
+    {
+      exit (-1);
+      NOT_REACHED ();
+    }
+  int result = process_execute (cmd_line);
+  printf ("syscall_exec result: %d\n", result);
+  return result;
 }
 
 static int syscall_wait (void *esp)

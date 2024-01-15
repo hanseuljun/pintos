@@ -35,15 +35,21 @@ process_execute (const char *cmdline)
   tid_t tid;
   int i;
 
-  /* Obtain first token of cmdline as the new thread's name .*/
-  char thread_name[MAX_THREAD_NAME_LENGTH + 1];
+  /* Obtain first token of cmdline as the name of the file to execute.*/
+  char file_name[MAX_THREAD_NAME_LENGTH + 1];
   for (i = 0; cmdline[i] != '\0' && cmdline[i] != ' '; i++)
     {
       if (i >= MAX_THREAD_NAME_LENGTH)
         return TID_ERROR;
-      thread_name[i] = cmdline[i];
+      file_name[i] = cmdline[i];
     }
-  thread_name[i] = '\0';
+  file_name[i] = '\0';
+
+  /* Examine if the file matching file_name exists. */
+  struct file *file = filesys_open (file_name);
+  if (file == NULL)
+    return TID_ERROR;
+  file_close (file);
 
   /* Make a copy of CMDLINE.
      Otherwise there's a race between the caller and load(). */
@@ -53,7 +59,7 @@ process_execute (const char *cmdline)
   strlcpy (fn_copy, cmdline, PGSIZE);
 
   /* Create a new thread to execute CMDLINE. */
-  tid = thread_create (thread_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
