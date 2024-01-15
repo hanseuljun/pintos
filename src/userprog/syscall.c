@@ -26,6 +26,7 @@ static uint32_t get_argument (void *esp, size_t idx);
 static void exit(int status);
 static int find_available_fd (void);
 static bool is_uaddr_valid (void *uaddr);
+static bool is_fd_valid (int fd);
 
 void
 syscall_init (void) 
@@ -150,6 +151,12 @@ static int syscall_read (void *esp)
   const void *buffer = (const void *) get_argument(esp, 2);
   unsigned size = (unsigned) get_argument(esp, 3);
 
+  if (!is_fd_valid (fd))
+    {
+      exit (-1);
+      NOT_REACHED ();
+    }
+
   /* Exit when buffer is pointing an invalid address. */
   if (!is_uaddr_valid (buffer))
     {
@@ -175,12 +182,7 @@ static void syscall_write (void *esp)
 static void syscall_close (void *esp)
 {
   int fd = (int) get_argument(esp, 1);
-  if (fd < FD_BASE)
-    {
-      exit (-1);
-      NOT_REACHED ();
-    }
-  if (fd >= (FD_BASE + FILE_MAP_SIZE))
+  if (!is_fd_valid (fd))
     {
       exit (-1);
       NOT_REACHED ();
@@ -237,4 +239,9 @@ static bool is_uaddr_valid (void *uaddr)
 
   t = thread_current ();
   return pagedir_get_page (t->pagedir, uaddr) != NULL;
+}
+
+static bool is_fd_valid (int fd)
+{
+  return (fd >= FD_BASE) && (fd < (FD_BASE + FILE_MAP_SIZE));
 }
