@@ -7,16 +7,23 @@
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
-#define FILE_MAP_SIZE 128
+#define FD_INFO_MAP_SIZE 128
 /* Should not use numbers assigned to STDIN_FILENO (0) or STDOUT_FILENO (1)
    for fd values of files. */
 #define FD_BASE 2
 
+struct fd_info
+{
+  struct file *file;
+  int pid;             /* pid of the process that opened this file. */
+};
+
 /* Map from fd values to file structs. */
-static struct file *file_map[FILE_MAP_SIZE];
+static struct fd_info *fd_info_map[FD_INFO_MAP_SIZE];
 
 static void syscall_handler (struct intr_frame *);
 static void syscall_exit (void *esp);
@@ -141,6 +148,7 @@ static int syscall_open (void *esp)
 {
   const char *file_name = (const char *) get_argument(esp, 1);
   struct file *file;
+  struct fd_info *fd_info;
 
   /* Exit when file_name is pointing an invalid address. */
   if (!is_uaddr_valid (file_name))
@@ -158,16 +166,22 @@ static int syscall_open (void *esp)
   file = filesys_open (file_name);
   if (file == NULL)
     return -1;
+
   int fd = find_available_fd ();
-  file_map[fd - FD_BASE] = file;
+
+  fd_info = malloc (sizeof *fd_info);
+  fd_info->file = file;
+  fd_info->pid = thread_tid ();
+
+  fd_info_map[fd - FD_BASE] = fd_info;
   return fd;
 }
 
 static int syscall_filesize (void *esp)
 {
   int fd = (int) get_argument(esp, 1);
-  struct file *file = file_map[fd - FD_BASE];
-  return file_length (file);
+  struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  return file_length (fd_info->file);
 }
 
 static int syscall_read (void *esp)
@@ -189,8 +203,8 @@ static int syscall_read (void *esp)
       NOT_REACHED ();
     }
 
-  struct file *file = file_map[fd - FD_BASE];
-  return file_read (file, buffer, size);
+  struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  return file_read (fd_info->file, buffer, size);
 }
 
 static int syscall_write (void *esp)
@@ -215,8 +229,8 @@ static int syscall_write (void *esp)
       NOT_REACHED ();
     }
 
-  struct file *file = file_map[fd - FD_BASE];
-  return file_write (file, buffer, size);
+  struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  return file_write (fd_info->file, buffer, size);
 }
 
 static void syscall_close (void *esp)
@@ -228,7 +242,14 @@ static void syscall_close (void *esp)
       NOT_REACHED ();
     }
 
-  struct file *file = file_map[fd - FD_BASE];
+  struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  if (fd_info->pid != thread_tid ())
+    {
+      exit (-1);
+      NOT_REACHED ();
+    }
+
+  struct file *file = fd_info->file;
   if (file == NULL)
     {
       exit (-1);
@@ -236,7 +257,8 @@ static void syscall_close (void *esp)
     }
 
   file_close (file);
-  file_map[fd - FD_BASE] = NULL;
+  fd_info_map[fd - FD_BASE] = NULL;
+  free (fd_info);
 }
 
 static uint32_t get_argument (void *esp, size_t idx)
@@ -264,9 +286,9 @@ static void exit (int status)
 static int find_available_fd (void)
 {
   int i;
-  for (i = 0; i < FILE_MAP_SIZE; i++)
+  for (i = 0; i < FD_INFO_MAP_SIZE; i++)
     {
-      if (file_map[i] == NULL)
+      if (fd_info_map[i] == NULL)
         return i + FD_BASE;
     }
 
@@ -287,5 +309,5 @@ static bool is_uaddr_valid (const void *uaddr)
 
 static bool is_fd_for_file_map (int fd)
 {
-  return (fd >= FD_BASE) && (fd < (FD_BASE + FILE_MAP_SIZE));
+  return (fd >= FD_BASE) && (fd < (FD_BASE + FD_INFO_MAP_SIZE));
 }
