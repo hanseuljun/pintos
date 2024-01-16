@@ -40,6 +40,7 @@ static uint32_t get_argument (void *esp, size_t idx);
 static void exit(int status);
 static int find_available_fd (void);
 static bool is_uaddr_valid (const void *uaddr);
+static bool is_uaddr_in_page (uint32_t *pd, const void *uaddr);
 static bool is_fd_for_file (int fd);
 
 void
@@ -285,7 +286,7 @@ static void syscall_close (void *esp)
 static uint32_t get_argument (void *esp, size_t idx)
 {
   void *addr = esp + idx * sizeof(uint32_t);
-  if (!is_uaddr_valid (addr) || !is_uaddr_valid (addr + 3))
+  if (!is_uaddr_valid (addr))
     {
       exit (-1);
       NOT_REACHED ();
@@ -333,15 +334,25 @@ static int find_available_fd (void)
   NOT_REACHED ();
 }
 
+/* Check validity of uaddr assuming its size is 4 bytes. */
 static bool is_uaddr_valid (const void *uaddr)
 {
   struct thread *t;
+  uint32_t *pd;
 
-  if (!is_user_vaddr (uaddr))
+  /* Examine the byte with the highest address. */
+  if (!is_user_vaddr (uaddr + 3))
     return false;
 
   t = thread_current ();
-  return pagedir_get_page (t->pagedir, uaddr) != NULL;
+  pd = t->pagedir;
+  /* Examine bytes at the both ends of the 4-byte address. */
+  return is_uaddr_in_page (pd, uaddr) && is_uaddr_in_page (pd, uaddr + 3);
+}
+
+static bool is_uaddr_in_page (uint32_t *pd, const void *uaddr)
+{
+  return pagedir_get_page (pd, uaddr) != NULL;
 }
 
 static bool is_fd_for_file (int fd)
