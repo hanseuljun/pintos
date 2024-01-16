@@ -140,6 +140,7 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+  struct file *file;
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -156,6 +157,12 @@ process_exit (void)
       cur->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
+    }
+  file = cur->file;
+  if (file != NULL)
+    {
+      cur->file = NULL;
+      file_close (file);
     }
 }
 
@@ -418,10 +425,18 @@ load (const char *cmdline, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  if (success)
+    {
+      file_deny_write (file);
+      t->file = file;
+    }
+  else
+    {
+      file_close (file);
+    }
   return success;
 }
-
+
 /* load() helpers. */
 
 static bool install_page (void *upage, void *kpage, bool writable);
