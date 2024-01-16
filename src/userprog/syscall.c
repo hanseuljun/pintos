@@ -243,20 +243,23 @@ static void syscall_close (void *esp)
     }
 
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  if (fd_info == NULL)
+    {
+      exit (-1);
+      NOT_REACHED ();
+    }
   if (fd_info->pid != thread_tid ())
     {
       exit (-1);
       NOT_REACHED ();
     }
-
-  struct file *file = fd_info->file;
-  if (file == NULL)
+  if (fd_info->file == NULL)
     {
       exit (-1);
       NOT_REACHED ();
     }
 
-  file_close (file);
+  file_close (fd_info->file);
   fd_info_map[fd - FD_BASE] = NULL;
   free (fd_info);
 }
