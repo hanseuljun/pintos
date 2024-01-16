@@ -34,6 +34,7 @@ static int syscall_open (void *esp);
 static int syscall_filesize (void *esp);
 static int syscall_read (void *esp);
 static int syscall_write (void *esp);
+static void syscall_seek (void *esp);
 static void syscall_close (void *esp);
 static uint32_t get_argument (void *esp, size_t idx);
 static void exit(int status);
@@ -83,6 +84,9 @@ syscall_handler (struct intr_frame *f)
         return;
       case SYS_WRITE:
         f->eax = syscall_write (f->esp);
+        return;
+      case SYS_SEEK:
+        syscall_seek (f->esp);
         return;
       case SYS_CLOSE:
         syscall_close (f->esp);
@@ -231,6 +235,20 @@ static int syscall_write (void *esp)
 
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
   return file_write (fd_info->file, buffer, size);
+}
+
+static void syscall_seek (void *esp)
+{
+  int fd = (int) get_argument(esp, 1);
+  unsigned position = (unsigned) get_argument(esp, 2);
+  if (!is_fd_for_file_map (fd))
+    {
+      exit (-1);
+      NOT_REACHED ();
+    }
+
+  struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  file_seek (fd_info->file, position);
 }
 
 static void syscall_close (void *esp)
