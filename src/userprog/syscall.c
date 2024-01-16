@@ -44,11 +44,7 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   int number;
-  /* 0x08048000 is the starting address of the code segment.
-     It is safe to assume the stack pointer is pointing an invalid
-     address if it is pointing below here.
-     See 3.1.4.1 Typical Memory Layout for the origin of 0x08048000. */
-  if ((size_t)f->esp < 0x08048000)
+  if (!is_uaddr_valid(f->esp))
     exit (-1);
 
   number = (int) get_argument (f->esp, 0);
