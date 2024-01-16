@@ -40,7 +40,7 @@ static uint32_t get_argument (void *esp, size_t idx);
 static void exit(int status);
 static int find_available_fd (void);
 static bool is_uaddr_valid (const void *uaddr);
-static bool is_fd_for_file_map (int fd);
+static bool is_fd_for_file (int fd);
 
 void
 syscall_init (void) 
@@ -194,7 +194,7 @@ static int syscall_read (void *esp)
   void *buffer = (void *) get_argument(esp, 2);
   unsigned size = (unsigned) get_argument(esp, 3);
 
-  if (!is_fd_for_file_map (fd))
+  if (!is_fd_for_file (fd))
     {
       exit (-1);
       NOT_REACHED ();
@@ -227,7 +227,7 @@ static int syscall_write (void *esp)
   if (fd == STDOUT_FILENO)
     return printf ((const char *) buffer);
 
-  if (!is_fd_for_file_map (fd))
+  if (!is_fd_for_file (fd))
     {
       exit (-1);
       NOT_REACHED ();
@@ -241,7 +241,7 @@ static void syscall_seek (void *esp)
 {
   int fd = (int) get_argument(esp, 1);
   unsigned position = (unsigned) get_argument(esp, 2);
-  if (!is_fd_for_file_map (fd))
+  if (!is_fd_for_file (fd))
     {
       exit (-1);
       NOT_REACHED ();
@@ -254,7 +254,7 @@ static void syscall_seek (void *esp)
 static void syscall_close (void *esp)
 {
   int fd = (int) get_argument(esp, 1);
-  if (!is_fd_for_file_map (fd))
+  if (!is_fd_for_file (fd))
     {
       exit (-1);
       NOT_REACHED ();
@@ -284,20 +284,36 @@ static void syscall_close (void *esp)
 
 static uint32_t get_argument (void *esp, size_t idx)
 {
-  uint32_t *addr = ((uint32_t *) esp) + idx;
-  if (!is_user_vaddr (addr))
+  void *addr = esp + idx * sizeof(uint32_t);
+  if (!is_uaddr_valid (addr) || !is_uaddr_valid (addr + 3))
     {
       exit (-1);
       NOT_REACHED ();
     }
-  return *addr;
+  return *(uint32_t *) addr;
 }
 
 static void exit (int status)
 {
   struct thread *t = thread_current ();
+  struct fd_info *fd_info;
+  int i;
+
+  /* Pass status to the waiter. */
   if (t->exit_status_waiter)
     *t->exit_status_waiter = status;
+
+  /* Close all files that belongs to the exiting process. */
+  for (i = 0; i < FD_INFO_MAP_SIZE; i++)
+    {
+      fd_info = fd_info_map[i];
+      if (fd_info != NULL && fd_info->pid == t->tid)
+        {
+          fd_info_map[i] = NULL;
+          file_close (fd_info->file);
+          free (fd_info);
+        }
+    }
 
   printf ("%s: exit(%d)\n", thread_name (), status);
   thread_exit ();
@@ -328,7 +344,7 @@ static bool is_uaddr_valid (const void *uaddr)
   return pagedir_get_page (t->pagedir, uaddr) != NULL;
 }
 
-static bool is_fd_for_file_map (int fd)
+static bool is_fd_for_file (int fd)
 {
   return (fd >= FD_BASE) && (fd < (FD_BASE + FD_INFO_MAP_SIZE));
 }
