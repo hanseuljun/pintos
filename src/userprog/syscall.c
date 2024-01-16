@@ -106,9 +106,7 @@ static int syscall_exec (void *esp)
       exit (-1);
       NOT_REACHED ();
     }
-  int result = process_execute (cmd_line);
-  printf ("syscall_exec result: %d\n", result);
-  return result;
+  return process_execute (cmd_line);
 }
 
 static int syscall_wait (void *esp)

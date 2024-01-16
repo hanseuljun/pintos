@@ -96,15 +96,6 @@ start_process (void *cmdline_)
   NOT_REACHED ();
 }
 
-/* process_wait helpers. */
-struct check_thread_status_aux
-  {
-    tid_t tid;
-    bool running;
-  };
-
-static void check_thread_status (struct thread *t, void *aux);
-
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
    exception), returns -1.  If TID is invalid or if it was not a
@@ -112,35 +103,25 @@ static void check_thread_status (struct thread *t, void *aux);
    been successfully called for the given TID, returns -1
    immediately, without waiting. */
 int
-process_wait (tid_t child_tid UNUSED)
+process_wait (tid_t child_tid)
 {
-  struct check_thread_status_aux aux;
+  struct thread *t;
   enum intr_level old_level;
 
   // TODO: Handle cases such as if TID is invalid mentioned in the function's comment.
 
-  aux.tid = child_tid;
   while (true)
     {
-      aux.running = false;
-
       old_level = intr_disable ();
-      thread_foreach(check_thread_status, &aux);
+      t = thread_find (child_tid);
       intr_set_level (old_level);
 
-      if (!aux.running)
+      if (t == NULL)
         break;
 
       thread_yield ();
     }
   return -1;
-}
-
-void check_thread_status (struct thread *t, void *aux_)
-{
-  struct check_thread_status_aux *aux = aux_;
-  if (t->tid == aux->tid && t->status != THREAD_DYING)
-    aux->running = true;
 }
 
 /* Free the current process's resources. */
