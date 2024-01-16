@@ -110,6 +110,16 @@ process_wait (tid_t child_tid)
 
   // TODO: Handle cases such as if TID is invalid mentioned in the function's comment.
 
+  int exit_status;
+  old_level = intr_disable ();
+  t = thread_find (child_tid);
+  if (t != NULL)
+      t->exit_status_waiter = &exit_status;
+  intr_set_level (old_level);
+
+  if (t == NULL)
+    return -1;
+
   while (true)
     {
       old_level = intr_disable ();
@@ -121,7 +131,7 @@ process_wait (tid_t child_tid)
 
       thread_yield ();
     }
-  return -1;
+  return exit_status;
 }
 
 /* Free the current process's resources. */

@@ -93,6 +93,7 @@ struct thread
     int nice;
     struct fixed_point recent_cpu;      /* recent_cpu of Section B.3. */
     struct list_elem allelem;           /* List element for all threads list. */
+    int *exit_status_waiter;            /* Can be set from process_wait(). */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;
@@ -146,5 +147,7 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+struct thread *thread_find (tid_t);
 
 #endif /* threads/thread.h */

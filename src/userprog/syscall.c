@@ -256,6 +256,10 @@ static uint32_t get_argument (void *esp, size_t idx)
 
 static void exit (int status)
 {
+  struct thread *t = thread_current ();
+  if (t->exit_status_waiter)
+    *t->exit_status_waiter = status;
+
   printf ("%s: exit(%d)\n", thread_name (), status);
   thread_exit ();
   NOT_REACHED ();
