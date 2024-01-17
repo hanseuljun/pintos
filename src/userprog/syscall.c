@@ -30,6 +30,7 @@ static void handle_exit (void *esp);
 static int handle_exec (void *esp);
 static int handle_wait (void *esp);
 static bool handle_create (void *esp);
+static bool handle_remove (void *esp);
 static int handle_open (void *esp);
 static int handle_filesize (void *esp);
 static int handle_read (void *esp);
@@ -100,6 +101,9 @@ syscall_handler (struct intr_frame *f)
       case SYS_CREATE:
         f->eax = handle_create (f->esp);
         return;
+      case SYS_REMOVE:
+        f->eax = handle_remove (f->esp);
+        return;
       case SYS_OPEN:
         f->eax = handle_open (f->esp);
         return;
@@ -135,6 +139,7 @@ handle_exit (void *esp)
 static int
 handle_exec (void *esp)
 {
+  // printf ("handle_exec - 1\n");
   const char *cmd_line = (const char *) get_argument(esp, 1);
   /* Exit when cmd_line is pointing an invalid address. */
   if (!is_uaddr_valid (cmd_line))
@@ -142,7 +147,10 @@ handle_exec (void *esp)
       syscall_exit (-1);
       NOT_REACHED ();
     }
-  return process_execute (cmd_line);
+  // return process_execute (cmd_line);
+  int pid = process_execute (cmd_line);
+  // printf ("handle_exec - 2, pid: %d\n", pid);
+  return pid;
 }
 
 static int
@@ -177,6 +185,31 @@ handle_create (void *esp)
     }
 
   return filesys_create (file_name, initial_size);
+}
+
+static bool
+handle_remove (void *esp)
+{
+  const char *file_name = (const char *) get_argument(esp, 1);
+  /* Exit when file_name is pointing an invalid address. */
+  if (!is_uaddr_valid (file_name))
+    {
+      syscall_exit (-1);
+      NOT_REACHED ();
+    }
+  /* Exit when file_name is NULL. */
+  if (file_name == NULL)
+    {
+      syscall_exit (-1);
+      NOT_REACHED ();
+    }
+  /* Fail when file_name is an empty string. */
+  if (file_name[0] == '\0')
+    {
+      return false;
+    }
+
+  return filesys_remove (file_name);
 }
 
 static int
