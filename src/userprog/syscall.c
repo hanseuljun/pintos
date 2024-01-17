@@ -37,7 +37,6 @@ static int handle_write (void *esp);
 static void handle_seek (void *esp);
 static void handle_close (void *esp);
 static uint32_t get_argument (void *esp, size_t idx);
-static void exit(int status);
 static int find_available_fd (void);
 static bool is_uaddr_valid (const void *uaddr);
 static bool is_fd_for_file (int fd);
@@ -49,7 +48,7 @@ syscall_init (void)
 }
 
 void
-exit (int status)
+syscall_exit (int status)
 {
   struct thread *t = thread_current ();
   struct fd_info *fd_info;
@@ -81,7 +80,7 @@ syscall_handler (struct intr_frame *f)
 {
   int number;
   if (!is_uaddr_valid(f->esp))
-    exit (-1);
+    syscall_exit (-1);
 
   number = (int) get_argument (f->esp, 0);
   switch (number)
@@ -129,7 +128,7 @@ static void
 handle_exit (void *esp)
 {
   int status = (int) get_argument(esp, 1);
-  exit (status);
+  syscall_exit (status);
   NOT_REACHED ();
 }
 
@@ -140,7 +139,7 @@ handle_exec (void *esp)
   /* Exit when cmd_line is pointing an invalid address. */
   if (!is_uaddr_valid (cmd_line))
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
   return process_execute (cmd_line);
@@ -162,13 +161,13 @@ handle_create (void *esp)
   /* Exit when file_name is pointing an invalid address. */
   if (!is_uaddr_valid (file_name))
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
   /* Exit when file_name is NULL. */
   if (file_name == NULL)
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
   /* Fail when file_name is an empty string. */
@@ -190,13 +189,13 @@ handle_open (void *esp)
   /* Exit when file_name is pointing an invalid address. */
   if (!is_uaddr_valid (file_name))
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
   /* Exit when file_name is NULL. */
   if (file_name == NULL)
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
 
@@ -231,14 +230,14 @@ handle_read (void *esp)
 
   if (!is_fd_for_file (fd))
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
 
   /* Exit when buffer is pointing an invalid address. */
   if (!is_uaddr_valid (buffer))
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
 
@@ -256,7 +255,7 @@ handle_write (void *esp)
   /* Exit when buffer is pointing an invalid address. */
   if (!is_uaddr_valid (buffer))
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
 
@@ -265,7 +264,7 @@ handle_write (void *esp)
 
   if (!is_fd_for_file (fd))
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
 
@@ -280,7 +279,7 @@ handle_seek (void *esp)
   unsigned position = (unsigned) get_argument(esp, 2);
   if (!is_fd_for_file (fd))
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
 
@@ -294,24 +293,24 @@ handle_close (void *esp)
   int fd = (int) get_argument(esp, 1);
   if (!is_fd_for_file (fd))
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
 
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
   if (fd_info == NULL)
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
   if (fd_info->pid != thread_tid ())
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
   if (fd_info->file == NULL)
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
 
@@ -326,7 +325,7 @@ get_argument (void *esp, size_t idx)
   void *addr = esp + idx * sizeof(uint32_t);
   if (!is_uaddr_valid (addr))
     {
-      exit (-1);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
   return *(uint32_t *) addr;
