@@ -25,6 +25,7 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static void wait_thread (tid_t tid);
 
 /* Starts a new thread running a user program loaded from
    CMDLINE.  The new thread may be scheduled (and may even exit)
@@ -114,9 +115,7 @@ process_wait (tid_t child_tid)
   enum intr_level old_level;
 
   // TODO: Handle cases such as if TID is invalid mentioned in the function's comment.
-  // TODO: Handle the case when a thread has no parent!!
-  if (cur->tid != child_tid)
-    return -1;
+  // TODO: Handle the case when child_tid is not for a child thread of the current thread.
 
   old_level = intr_disable ();
   child = thread_find (child_tid);
@@ -124,34 +123,45 @@ process_wait (tid_t child_tid)
 
   if (child != NULL)
     {
-      while (true)
-        {
-          old_level = intr_disable ();
-          child = thread_find (child_tid);
-          intr_set_level (old_level);
-
-          if (child == NULL)
-            break;
-
-          thread_yield ();
-        }
+      wait_thread (child_tid);
     }
 
   /* Retrieve exit_status from cur->thread_exit_info_list. */
   int exit_status = -1;
+  struct list *exit_info_list = &cur->exit_info_list;
   struct list_elem *e;
-  for (e = list_begin (&cur->exit_info_list); e != list_end (&cur->exit_info_list);
+  for (e = list_begin (exit_info_list); e != list_end (exit_info_list);
        e = list_next (e))
     {
       struct thread_exit_info *exit_info = list_entry (e, struct thread_exit_info, elem);
       if (exit_info->tid == child_tid)
         {
           exit_status = exit_info->exit_status;
+          list_remove (e);
           break;
         }
     }
 
   return exit_status;
+}
+
+static void
+wait_thread (tid_t tid)
+{
+  struct thread *t;
+  enum intr_level old_level;
+
+  while (true)
+    {
+      old_level = intr_disable ();
+      t = thread_find (tid);
+      intr_set_level (old_level);
+
+      if (t == NULL)
+        return;
+
+      thread_yield ();
+    }
 }
 
 /* Free the current process's resources. */
