@@ -7,6 +7,7 @@
 #include <string.h>
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
+#include "userprog/syscall.h"
 #include "userprog/tss.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
@@ -15,6 +16,7 @@
 #include "threads/init.h"
 #include "threads/interrupt.h"
 #include "threads/palloc.h"
+#include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
@@ -46,10 +48,14 @@ process_execute (const char *cmdline)
   file_name[i] = '\0';
 
   /* Examine if the file matching file_name exists. */
+  lock_acquire (&global_filesys_lock);
   struct file *file = filesys_open (file_name);
+  lock_release (&global_filesys_lock);
   if (file == NULL)
     return TID_ERROR;
+  lock_acquire (&global_filesys_lock);
   file_close (file);
+  lock_release (&global_filesys_lock);
 
   /* Make a copy of CMDLINE.
      Otherwise there's a race between the caller and load(). */
@@ -265,6 +271,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
+  lock_acquire (&global_filesys_lock);
   /* Prepare splitting cmdline into tokens. */
   size_t cmdline_len = strlen(cmdline);
   if (cmdline_len >= MAX_CMDLINE_LENGTH)
@@ -434,6 +441,8 @@ load (const char *cmdline, void (**eip) (void), void **esp)
     {
       file_close (file);
     }
+
+  lock_release (&global_filesys_lock);
   return success;
 }
 

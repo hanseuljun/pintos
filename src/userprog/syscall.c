@@ -8,6 +8,7 @@
 #include "userprog/process.h"
 #include "threads/interrupt.h"
 #include "threads/malloc.h"
+#include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
@@ -24,6 +25,8 @@ struct fd_info
 
 /* Map from fd values to file structs. */
 static struct fd_info *fd_info_map[FD_INFO_MAP_SIZE];
+
+struct lock global_filesys_lock;
 
 static void syscall_handler (struct intr_frame *);
 static void handle_exit (void *esp);
@@ -45,6 +48,7 @@ static bool is_fd_for_file (int fd);
 void
 syscall_init (void) 
 {
+  lock_init (&global_filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -184,7 +188,10 @@ handle_create (void *esp)
       return false;
     }
 
-  return filesys_create (file_name, initial_size);
+  lock_acquire (&global_filesys_lock);
+  bool success = filesys_create (file_name, initial_size);
+  lock_release (&global_filesys_lock);
+  return success;
 }
 
 static bool
@@ -209,7 +216,10 @@ handle_remove (void *esp)
       return false;
     }
 
-  return filesys_remove (file_name);
+  lock_acquire (&global_filesys_lock);
+  bool success = filesys_remove (file_name);
+  lock_release (&global_filesys_lock);
+  return success;
 }
 
 static int
@@ -232,7 +242,9 @@ handle_open (void *esp)
       NOT_REACHED ();
     }
 
+  lock_acquire (&global_filesys_lock);
   file = filesys_open (file_name);
+  lock_release (&global_filesys_lock);
   if (file == NULL)
     return -1;
 
@@ -251,7 +263,10 @@ handle_filesize (void *esp)
 {
   int fd = (int) get_argument(esp, 1);
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
-  return file_length (fd_info->file);
+  lock_acquire (&global_filesys_lock);
+  int filesize = file_length (fd_info->file);
+  lock_release (&global_filesys_lock);
+  return filesize;
 }
 
 static int
@@ -275,7 +290,10 @@ handle_read (void *esp)
     }
 
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
-  return file_read (fd_info->file, buffer, size);
+  lock_acquire (&global_filesys_lock);
+  int bytes_read = file_read (fd_info->file, buffer, size);
+  lock_release (&global_filesys_lock);
+  return bytes_read;
 }
 
 static int
@@ -302,7 +320,10 @@ handle_write (void *esp)
     }
 
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
-  return file_write (fd_info->file, buffer, size);
+  lock_acquire (&global_filesys_lock);
+  int bytes_written = file_write (fd_info->file, buffer, size);
+  lock_release (&global_filesys_lock);
+  return bytes_written;
 }
 
 static void
@@ -317,7 +338,9 @@ handle_seek (void *esp)
     }
 
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  lock_acquire (&global_filesys_lock);
   file_seek (fd_info->file, position);
+  lock_release (&global_filesys_lock);
 }
 
 static void
@@ -347,7 +370,9 @@ handle_close (void *esp)
       NOT_REACHED ();
     }
 
+  lock_acquire (&global_filesys_lock);
   file_close (fd_info->file);
+  lock_release (&global_filesys_lock);
   fd_info_map[fd - FD_BASE] = NULL;
   free (fd_info);
 }
