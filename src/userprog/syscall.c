@@ -8,6 +8,8 @@
 #include "userprog/process.h"
 #include "threads/interrupt.h"
 #include "threads/malloc.h"
+#include "threads/synch.h"
+#include "threads/thread.h"
 #include "threads/vaddr.h"
 
 #define FD_INFO_MAP_SIZE 128
@@ -23,6 +25,8 @@ struct fd_info
 
 /* Map from fd values to file structs. */
 static struct fd_info *fd_info_map[FD_INFO_MAP_SIZE];
+
+struct lock global_filesys_lock;
 
 static void syscall_handler (struct intr_frame *);
 static void handle_exit (void *esp);
@@ -44,6 +48,7 @@ static bool is_fd_for_file (int fd);
 void
 syscall_init (void) 
 {
+  lock_init (&global_filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -59,6 +64,7 @@ syscall_exit (int status)
     *t->exit_status_waiter = status;
 
   /* Close all files that belongs to the exiting process. */
+  lock_acquire (&global_filesys_lock);
   for (i = 0; i < FD_INFO_MAP_SIZE; i++)
     {
       fd_info = fd_info_map[i];
@@ -69,6 +75,7 @@ syscall_exit (int status)
           free (fd_info);
         }
     }
+  lock_release (&global_filesys_lock);
 
   printf ("%s: exit(%d)\n", thread_name (), status);
   thread_exit ();
@@ -80,10 +87,7 @@ syscall_handler (struct intr_frame *f)
 {
   int number;
   if (!is_uaddr_valid(f->esp))
-    {
-      syscall_exit (-1);
-      NOT_REACHED ();
-    }
+    syscall_exit (-1);
 
   number = (int) get_argument (f->esp, 0);
   switch (number)
@@ -182,7 +186,9 @@ handle_create (void *esp)
       return false;
     }
 
+  lock_acquire (&global_filesys_lock);
   bool success = filesys_create (file_name, initial_size);
+  lock_release (&global_filesys_lock);
   return success;
 }
 
@@ -208,7 +214,9 @@ handle_remove (void *esp)
       return false;
     }
 
+  lock_acquire (&global_filesys_lock);
   bool success = filesys_remove (file_name);
+  lock_release (&global_filesys_lock);
   return success;
 }
 
@@ -232,7 +240,9 @@ handle_open (void *esp)
       NOT_REACHED ();
     }
 
+  lock_acquire (&global_filesys_lock);
   file = filesys_open (file_name);
+  lock_release (&global_filesys_lock);
   if (file == NULL)
     return -1;
 
@@ -251,7 +261,9 @@ handle_filesize (void *esp)
 {
   int fd = (int) get_argument(esp, 1);
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  lock_acquire (&global_filesys_lock);
   int filesize = file_length (fd_info->file);
+  lock_release (&global_filesys_lock);
   return filesize;
 }
 
@@ -276,7 +288,9 @@ handle_read (void *esp)
     }
 
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  lock_acquire (&global_filesys_lock);
   int bytes_read = file_read (fd_info->file, buffer, size);
+  lock_release (&global_filesys_lock);
   return bytes_read;
 }
 
@@ -304,7 +318,9 @@ handle_write (void *esp)
     }
 
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  lock_acquire (&global_filesys_lock);
   int bytes_written = file_write (fd_info->file, buffer, size);
+  lock_release (&global_filesys_lock);
   return bytes_written;
 }
 
@@ -320,7 +336,9 @@ handle_seek (void *esp)
     }
 
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  lock_acquire (&global_filesys_lock);
   file_seek (fd_info->file, position);
+  lock_release (&global_filesys_lock);
 }
 
 static void
@@ -350,7 +368,9 @@ handle_close (void *esp)
       NOT_REACHED ();
     }
 
+  lock_acquire (&global_filesys_lock);
   file_close (fd_info->file);
+  lock_release (&global_filesys_lock);
   fd_info_map[fd - FD_BASE] = NULL;
   free (fd_info);
 }
