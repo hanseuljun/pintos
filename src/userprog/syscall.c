@@ -59,9 +59,22 @@ syscall_exit (int status)
   struct fd_info *fd_info;
   int i;
 
-  /* Pass status to the waiter. */
-  if (t->exit_status_waiter)
-    *t->exit_status_waiter = status;
+  /* Pass status to parent. */
+  int parent_tid = t->parent_tid;
+  if (parent_tid != TID_ERROR)
+    {
+      enum intr_level old_level;
+      old_level = intr_disable ();
+      struct thread *parent = thread_find (parent_tid);
+      if (parent)
+        {
+          struct thread_exit_info *exit_info = malloc (sizeof exit_info);
+          exit_info->tid = t->tid;
+          exit_info->exit_status = status;
+          list_push_back (&parent->exit_info_list, &exit_info->elem);
+        }
+      intr_set_level (old_level);
+    }
 
   /* Close all files that belongs to the exiting process. */
   lock_acquire (&global_filesys_lock);

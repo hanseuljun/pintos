@@ -25,6 +25,13 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+struct thread_exit_info
+  {
+    tid_t tid;
+    int exit_status;
+    struct list_elem elem;
+  };
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -93,7 +100,6 @@ struct thread
     int nice;
     struct fixed_point recent_cpu;      /* recent_cpu of Section B.3. */
     struct list_elem allelem;           /* List element for all threads list. */
-    int *exit_status_waiter;            /* Can be set from process_wait(). */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;
@@ -104,8 +110,11 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-    struct file *file;                  /* Prevents writing to this file. */
 #endif
+    struct file *file;                  /* Prevents writing to this file. */
+
+    tid_t parent_tid;                   /* Set as TID_ERROR if there is no parent. */
+    struct list exit_info_list;
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

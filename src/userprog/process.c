@@ -109,32 +109,48 @@ start_process (void *cmdline_)
 int
 process_wait (tid_t child_tid)
 {
-  struct thread *t;
+  struct thread *cur = thread_current ();
+  struct thread *child;
   enum intr_level old_level;
 
   // TODO: Handle cases such as if TID is invalid mentioned in the function's comment.
-
-  int exit_status;
-  old_level = intr_disable ();
-  t = thread_find (child_tid);
-  if (t != NULL)
-      t->exit_status_waiter = &exit_status;
-  intr_set_level (old_level);
-
-  if (t == NULL)
+  // TODO: Handle the case when a thread has no parent!!
+  if (cur->tid != child_tid)
     return -1;
 
-  while (true)
+  old_level = intr_disable ();
+  child = thread_find (child_tid);
+  intr_set_level (old_level);
+
+  if (child != NULL)
     {
-      old_level = intr_disable ();
-      t = thread_find (child_tid);
-      intr_set_level (old_level);
+      while (true)
+        {
+          old_level = intr_disable ();
+          child = thread_find (child_tid);
+          intr_set_level (old_level);
 
-      if (t == NULL)
-        break;
+          if (child == NULL)
+            break;
 
-      thread_yield ();
+          thread_yield ();
+        }
     }
+
+  /* Retrieve exit_status from cur->thread_exit_info_list. */
+  int exit_status = -1;
+  struct list_elem *e;
+  for (e = list_begin (&cur->exit_info_list); e != list_end (&cur->exit_info_list);
+       e = list_next (e))
+    {
+      struct thread_exit_info *exit_info = list_entry (e, struct thread_exit_info, elem);
+      if (exit_info->tid == child_tid)
+        {
+          exit_status = exit_info->exit_status;
+          break;
+        }
+    }
+
   return exit_status;
 }
 

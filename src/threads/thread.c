@@ -8,6 +8,7 @@
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/switch.h"
 #include "threads/synch.h"
@@ -104,6 +105,8 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  /* TID_ERROR indicates initial_thread has no parent. */
+  initial_thread->parent_tid = TID_ERROR;
 
   fixed_point_init(&load_avg, 0);
 }
@@ -245,6 +248,8 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  /* Assign tid of running thread. */
+  t->parent_tid = thread_tid ();
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -347,7 +352,17 @@ thread_tid (void)
 void
 thread_exit (void) 
 {
+  struct thread *t = thread_current ();
+
   ASSERT (!intr_context ());
+
+  /* Free all thread_exit_info instances. */
+  while (!list_empty (&t->exit_info_list))
+    {
+      struct list_elem *e = list_pop_front (&t->exit_info_list);
+      struct thread_exit_info *exit_info = list_entry (e, struct thread_exit_info, elem);
+      free (exit_info);
+    }
 
 #ifdef USERPROG
   process_exit ();
@@ -589,8 +604,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->sleep_until = INT64_MAX;
-  t->magic = THREAD_MAGIC;
   list_init(&t->acquired_lock_list);
+  list_init(&t->exit_info_list);
+  t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
