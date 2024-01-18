@@ -7,7 +7,6 @@
 #include <string.h>
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
-#include "userprog/syscall.h"
 #include "userprog/tss.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
@@ -16,7 +15,6 @@
 #include "threads/init.h"
 #include "threads/interrupt.h"
 #include "threads/palloc.h"
-#include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
@@ -48,10 +46,8 @@ process_execute (const char *cmdline)
   file_name[i] = '\0';
 
   /* Examine if the file matching file_name exists. */
-  lock_acquire (&global_filesys_lock);
   struct file *file = filesys_open (file_name);
   file_close (file);
-  lock_release (&global_filesys_lock);
   if (file == NULL)
     return TID_ERROR;
 
@@ -113,7 +109,6 @@ process_wait (tid_t child_tid)
   enum intr_level old_level;
 
   // TODO: Handle cases such as if TID is invalid mentioned in the function's comment.
-
   int exit_status;
   old_level = intr_disable ();
   t = thread_find (child_tid);
@@ -269,7 +264,6 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
-  lock_acquire (&global_filesys_lock);
   /* Prepare splitting cmdline into tokens. */
   size_t cmdline_len = strlen(cmdline);
   if (cmdline_len >= MAX_CMDLINE_LENGTH)
@@ -440,7 +434,6 @@ load (const char *cmdline, void (**eip) (void), void **esp)
       file_close (file);
     }
 
-  lock_release (&global_filesys_lock);
   return success;
 }
 
@@ -514,7 +507,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
-  ASSERT (lock_held_by_current_thread (&global_filesys_lock));
 
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
