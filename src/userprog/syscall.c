@@ -64,6 +64,7 @@ syscall_exit (int status)
     *t->exit_status_waiter = status;
 
   /* Close all files that belongs to the exiting process. */
+  lock_acquire (&global_filesys_lock);
   for (i = 0; i < FD_INFO_MAP_SIZE; i++)
     {
       fd_info = fd_info_map[i];
@@ -74,6 +75,7 @@ syscall_exit (int status)
           free (fd_info);
         }
     }
+  lock_release (&global_filesys_lock);
 
   printf ("%s: exit(%d)\n", thread_name (), status);
   thread_exit ();
@@ -143,7 +145,6 @@ handle_exit (void *esp)
 static int
 handle_exec (void *esp)
 {
-  // printf ("handle_exec - 1\n");
   const char *cmd_line = (const char *) get_argument(esp, 1);
   /* Exit when cmd_line is pointing an invalid address. */
   if (!is_uaddr_valid (cmd_line))
@@ -151,10 +152,7 @@ handle_exec (void *esp)
       syscall_exit (-1);
       NOT_REACHED ();
     }
-  // return process_execute (cmd_line);
-  int pid = process_execute (cmd_line);
-  // printf ("handle_exec - 2, pid: %d\n", pid);
-  return pid;
+  return process_execute (cmd_line);
 }
 
 static int

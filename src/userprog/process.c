@@ -50,12 +50,10 @@ process_execute (const char *cmdline)
   /* Examine if the file matching file_name exists. */
   lock_acquire (&global_filesys_lock);
   struct file *file = filesys_open (file_name);
+  file_close (file);
   lock_release (&global_filesys_lock);
   if (file == NULL)
     return TID_ERROR;
-  lock_acquire (&global_filesys_lock);
-  file_close (file);
-  lock_release (&global_filesys_lock);
 
   /* Make a copy of CMDLINE.
      Otherwise there's a race between the caller and load(). */
@@ -516,6 +514,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
+  ASSERT (lock_held_by_current_thread (&global_filesys_lock));
 
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
