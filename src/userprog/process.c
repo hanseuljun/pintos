@@ -22,6 +22,7 @@
 
 #define MAX_THREAD_NAME_LENGTH 128
 #define MAX_CMDLINE_LENGTH 128
+#define REQUIRED_PALLOC_AVAILABLE_CAPACITY 100
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -63,10 +64,17 @@ process_execute (const char *cmdline)
     return TID_ERROR;
   strlcpy (fn_copy, cmdline, PGSIZE);
 
+  /* Check if there are plenty memory left for userspace,
+     for start_process () to not fail. */
+  size_t available_capacity = palloc_get_available_capcity (PAL_USER);
+  printf ("pal_user_available_capacity: %ld\n", available_capacity);
+  if (available_capacity < REQUIRED_PALLOC_AVAILABLE_CAPACITY)
+    return TID_ERROR;
+
   /* Create a new thread to execute CMDLINE. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+    palloc_free_page (fn_copy);
   return tid;
 }
 
@@ -79,6 +87,7 @@ start_process (void *cmdline_)
   struct intr_frame if_;
   bool success;
 
+  printf ("start_process - 1\n");
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -86,6 +95,7 @@ start_process (void *cmdline_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (cmdline, &if_.eip, &if_.esp);
 
+  printf ("start_process - 2, success: %d\n", success);
   /* If load failed, quit. */
   palloc_free_page (cmdline);
   if (!success) 
@@ -121,6 +131,8 @@ process_wait (tid_t child_tid)
   child = thread_find (child_tid);
   intr_set_level (old_level);
 
+  // printf ("process_wait - 1, child_tid: %d, child: %p\n", child_tid, child);
+
   if (child != NULL)
     {
       wait_thread (child_tid);
@@ -141,6 +153,8 @@ process_wait (tid_t child_tid)
           break;
         }
     }
+  
+  // printf ("process_wait - 2, exit_status: %d, exit_info_list len: %ld\n", exit_status, list_size (exit_info_list));
 
   return exit_status;
 }
@@ -295,6 +309,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
+  printf ("load - 1\n");
   lock_acquire (&global_filesys_lock);
   /* Prepare splitting cmdline into tokens. */
   size_t cmdline_len = strlen(cmdline);
@@ -315,6 +330,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
        token = strtok_r (NULL, " ", &save_ptr))
     token_offsets[token_count++] = token - tokened_cmdline;
 
+  printf ("load - 2\n");
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -324,6 +340,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   /* First token contains the file name. */
   const char *file_name = tokened_cmdline;
 
+  printf ("load - 3\n");
   /* Open executable file. */
   file = filesys_open (file_name);
   if (file == NULL) 
@@ -332,6 +349,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
       goto done; 
     }
 
+  printf ("load - 4\n");
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
@@ -345,16 +363,19 @@ load (const char *cmdline, void (**eip) (void), void **esp)
       goto done; 
     }
 
+  printf ("load - 5, ehdr.e_phnum: %d\n", ehdr.e_phnum);
   /* Read program headers. */
   file_ofs = ehdr.e_phoff;
   for (i = 0; i < ehdr.e_phnum; i++) 
     {
       struct Elf32_Phdr phdr;
 
+      printf ("load - 5-1\n");
       if (file_ofs < 0 || file_ofs > file_length (file))
         goto done;
       file_seek (file, file_ofs);
 
+      printf ("load - 5-2\n");
       if (file_read (file, &phdr, sizeof phdr) != sizeof phdr)
         goto done;
       file_ofs += sizeof phdr;
@@ -370,6 +391,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
         case PT_DYNAMIC:
         case PT_INTERP:
         case PT_SHLIB:
+          printf ("load 5-3\n");
           goto done;
         case PT_LOAD:
           if (validate_segment (&phdr, file)) 
@@ -396,14 +418,21 @@ load (const char *cmdline, void (**eip) (void), void **esp)
                 }
               if (!load_segment (file, file_page, (void *) mem_page,
                                  read_bytes, zero_bytes, writable))
-                goto done;
+                {
+                  printf ("load 5-4\n");
+                  goto done;
+                }
             }
           else
-            goto done;
+            {
+              printf ("load 5-5\n");
+              goto done;
+            }
           break;
         }
     }
 
+  printf ("load - 6\n");
   /* Set up stack. */
   if (!setup_stack (esp))
     goto done;
@@ -453,6 +482,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   *((int *)*esp) = 0;
 
   success = true;
+  printf ("load - 7\n");
 
  done:
   /* We arrive here whether the load is successful or not. */
@@ -542,6 +572,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT (ofs % PGSIZE == 0);
   ASSERT (lock_held_by_current_thread (&global_filesys_lock));
 
+  printf ("load_segment - 1\n");
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {
@@ -554,11 +585,15 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       /* Get a page of memory. */
       uint8_t *kpage = palloc_get_page (PAL_USER);
       if (kpage == NULL)
-        return false;
+        {
+          printf ("load_segment - 2\n");
+          return false;
+        }
 
       /* Load this page. */
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
+          printf ("load_segment - 3\n");
           palloc_free_page (kpage);
           return false; 
         }
@@ -567,6 +602,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       /* Add the page to the process's address space. */
       if (!install_page (upage, kpage, writable)) 
         {
+          printf ("load_segment - 4\n");
           palloc_free_page (kpage);
           return false; 
         }
@@ -576,6 +612,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
     }
+  printf ("load_segment - 5\n");
   return true;
 }
 

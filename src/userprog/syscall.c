@@ -59,6 +59,7 @@ syscall_exit (int status)
   struct fd_info *fd_info;
   int i;
 
+  printf ("syscall_exit - 1, status: %d\n", status);
   /* Pass status to parent. */
   int parent_tid = t->parent_tid;
   if (parent_tid != TID_ERROR)
@@ -72,6 +73,7 @@ syscall_exit (int status)
           exit_info->tid = t->tid;
           exit_info->exit_status = status;
           list_push_back (&parent->exit_info_list, &exit_info->elem);
+          printf ("syscall_exit - 2, pushed back status: %d\n", status);
         }
       intr_set_level (old_level);
     }
@@ -240,9 +242,12 @@ handle_open (void *esp)
   struct file *file;
   struct fd_info *fd_info;
 
+  // printf ("handle_open: %p\n", file_name);
+
   /* Exit when file_name is pointing an invalid address. */
   if (!is_uaddr_valid (file_name))
     {
+      // printf ("handle_open, uaddr invalid\n");
       syscall_exit (-1);
       NOT_REACHED ();
     }

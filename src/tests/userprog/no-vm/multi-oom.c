@@ -67,7 +67,10 @@ consume_some_resources_and_die (int seed)
   random_init (seed);
   volatile int *PHYS_BASE = (volatile int *)0xC0000000;
 
-  switch (random_ulong () % 5)
+  int type = random_ulong () % 5;
+  // printf ("random type: %d\n", type);
+  // switch (random_ulong () % 5)
+  switch (type)
     {
       case 0:
         *(volatile int *) NULL = 42;
@@ -111,6 +114,8 @@ main (int argc, char *argv[])
   bool is_at_root = (n == 0);
   if (is_at_root)
     msg ("begin");
+  
+  printf ("START n: %d\n", n);
 
   /* If -k is passed, crash this process. */
   if (argc > 2 && !strcmp(argv[2], "-k"))
@@ -132,6 +137,7 @@ main (int argc, char *argv[])
       if (n > EXPECTED_DEPTH_TO_PASS/2)
         {
           child_pid = spawn_child (n + 1, CRASH);
+          // printf ("CRASH n: %d, child_pid: %d\n", n, child_pid);
           if (child_pid != -1)
             {
               if (wait (child_pid) != -1)
@@ -143,10 +149,14 @@ main (int argc, char *argv[])
 
       /* Now spawn the child that will recurse. */
       child_pid = spawn_child (n + 1, RECURSE);
+      printf ("RECURSE n: %d, child_pid: %d\n", n, child_pid);
 
       /* If maximum depth is reached, return result. */
       if (child_pid == -1)
-        return n;
+        {
+          printf ("return n: %d\n", n);
+          return n;
+        }
 
       /* Else wait for child to report how deeply it was able to recurse. */
       int reached_depth = wait (child_pid);
@@ -174,6 +184,7 @@ main (int argc, char *argv[])
       msg ("end");
     }
 
+  printf ("return expected_depth: %d\n", expected_depth);
   return expected_depth;
 }
 // vim: sw=2
