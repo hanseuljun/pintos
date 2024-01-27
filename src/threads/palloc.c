@@ -148,6 +148,13 @@ palloc_free_page (void *page)
   palloc_free_multiple (page, 1);
 }
 
+size_t
+palloc_get_available_capcity (enum palloc_flags flags)
+{
+  struct pool *pool = flags & PAL_USER ? &user_pool : &kernel_pool;
+  return bitmap_count (pool->used_map, 0, bitmap_size (pool->used_map), false);
+}
+
 /* Initializes pool P as starting at START and ending at END,
    naming it NAME for debugging purposes. */
 static void

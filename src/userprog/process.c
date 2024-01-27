@@ -22,6 +22,8 @@
 
 #define MAX_THREAD_NAME_LENGTH 128
 #define MAX_CMDLINE_LENGTH 128
+/* REQUIRED_PALLOC_AVAILABLE_CAPACITY is set to pass multi-oom. */
+#define REQUIRED_PALLOC_AVAILABLE_CAPACITY 160
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -62,6 +64,10 @@ process_execute (const char *cmdline)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, cmdline, PGSIZE);
+
+  /* Check if there are plenty memory left for start_process to not fail. */
+  if (palloc_get_available_capcity (PAL_USER) < REQUIRED_PALLOC_AVAILABLE_CAPACITY)
+    return TID_ERROR;
 
   /* Create a new thread to execute CMDLINE. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
