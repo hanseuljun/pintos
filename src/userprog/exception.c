@@ -5,6 +5,12 @@
 #include "userprog/syscall.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
+
+#ifdef VM
+#include "vm/frame_table.h"
+#include "vm/suppl_page_table.h"
+#endif
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -153,21 +159,30 @@ page_fault (struct intr_frame *f)
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
-  printf ("Page fault at %p: %s error %s page in %s context.\n",
-          fault_addr,
-          not_present ? "not present" : "rights violation",
-          write ? "writing" : "reading",
-          user ? "user" : "kernel");
+  /* Commenting below code to pass tests. Uncomment when needed for debugging. */
+  // printf ("Page fault at %p: %s error %s page in %s context.\n",
+  //         fault_addr,
+  //         not_present ? "not present" : "rights violation",
+  //         write ? "writing" : "reading",
+  //         user ? "user" : "kernel");
 
-  if (user)
-   {
-      syscall_exit (-1);
-      NOT_REACHED ();
-   }
-  else
-   {
+  if (!user)
+    {
       kill (f);
-   }
+      NOT_REACHED ();
+    }
+
+  // Install a user virtual page for fault_addr when the address belongs to user virtual memory.
+  if (((uint8_t *) fault_addr) < ((uint8_t *) PHYS_BASE))
+    {
+      uint8_t *kpage = frame_table_get_page (0);
+      suppl_page_table_set_page(pg_round_down (fault_addr), kpage, true);
+      suppl_page_table_set_stack_size (suppl_page_table_get_stack_size () + PGSIZE);
+      return;
+    }
+
+  syscall_exit (-1);
+  NOT_REACHED ();
 #else
   if (user)
    {

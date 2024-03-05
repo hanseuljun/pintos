@@ -611,9 +611,16 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+        {
+          *esp = PHYS_BASE;
+#ifdef VM
+          suppl_page_table_set_stack_size (PGSIZE);
+#endif
+        }
       else
-        palloc_free_page (kpage);
+        {
+          palloc_free_page (kpage);
+        }
     }
   return success;
 }
