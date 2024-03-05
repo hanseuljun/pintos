@@ -19,7 +19,11 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+
+#ifdef VM
 #include "vm/frame_table.h"
+#include "vm/suppl_page_table.h"
+#endif
 
 #define MAX_THREAD_NAME_LENGTH 128
 #define MAX_CMDLINE_LENGTH 128
@@ -560,7 +564,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
       /* Get a page of memory. */
 #ifdef VM
-      uint8_t *kpage = frame_table_get_page(0);
+      uint8_t *kpage = frame_table_get_page (0);
 #else
       uint8_t *kpage = palloc_get_page (PAL_USER);
 #endif
@@ -626,10 +630,14 @@ setup_stack (void **esp)
 static bool
 install_page (void *upage, void *kpage, bool writable)
 {
+#ifdef VM
+  return suppl_page_table_set_page (upage, kpage, writable);
+#else
   struct thread *t = thread_current ();
 
   /* Verify that there's not already a page at that virtual
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+#endif
 }
