@@ -184,7 +184,6 @@ page_fault (struct intr_frame *f)
     {
       uint8_t *kpage = frame_table_get_page (0);
       suppl_page_table_set_page(pg_round_down (fault_addr), kpage, true);
-      suppl_page_table_set_stack_size (suppl_page_table_get_stack_size () + PGSIZE);
       return;
     }
 
