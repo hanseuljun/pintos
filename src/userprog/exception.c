@@ -179,8 +179,8 @@ page_fault (struct intr_frame *f)
       NOT_REACHED ();
     }
 
-  /* Install a user virtual page for fault_addr when the address belongs to user virtual memory. */
-  if (((uint8_t *) fault_addr) < ((uint8_t *) PHYS_BASE))
+  /* Install a user virtual page for fault_addr when user is writing and the address belongs to user virtual memory. */
+  if (write && ((uint8_t *) fault_addr) < ((uint8_t *) PHYS_BASE))
     {
       uint8_t *kpage = frame_table_get_page (0);
       suppl_page_table_set_page(pg_round_down (fault_addr), kpage, true);
