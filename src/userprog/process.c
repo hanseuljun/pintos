@@ -99,8 +99,11 @@ start_process (void *cmdline_)
 
   /* If load failed, quit. */
   palloc_free_page (cmdline);
-  if (!success) 
-    thread_exit ();
+  if (!success)
+    {
+      printf ("Failed to load.\n");
+      thread_exit ();
+    }
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
