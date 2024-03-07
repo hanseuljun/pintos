@@ -410,7 +410,10 @@ load (const char *cmdline, void (**eip) (void), void **esp)
                 }
               if (!load_segment (file, file_page, (void *) mem_page,
                                  read_bytes, zero_bytes, writable))
-                goto done;
+                {
+                  printf ("Failed to load a segment.\n");
+                  goto done;
+                }
             }
           else
             goto done;
