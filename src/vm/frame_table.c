@@ -1,4 +1,5 @@
 #include "frame_table.h"
+#include "devices/block.h"
 
 void *frame_table_get_page (enum palloc_flags flags)
 {
