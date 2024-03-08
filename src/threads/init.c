@@ -33,6 +33,7 @@
 #endif
 #ifdef VM
 #include "vm/suppl_page_table.h"
+#include "vm/swap_table.h"
 #endif
 #ifdef FILESYS
 #include "devices/block.h"
@@ -125,6 +126,7 @@ main (void)
 
 #ifdef VM
   suppl_page_table_init ();
+  swap_table_init ();
 #endif
 
 #ifdef FILESYS
