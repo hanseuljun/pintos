@@ -182,8 +182,7 @@ page_fault (struct intr_frame *f)
   /* Install a user virtual page for fault_addr when user is writing and the address belongs to user virtual memory. */
   if (write && ((uint8_t *) fault_addr) < ((uint8_t *) PHYS_BASE))
     {
-      uint8_t *kpage = frame_table_get_page (0);
-      suppl_page_table_add_page(pg_round_down (fault_addr), kpage, true);
+      frame_table_install (fault_addr, 0);
       return;
     }
 
