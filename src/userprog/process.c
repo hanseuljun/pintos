@@ -581,7 +581,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
           palloc_free_page (kpage);
-          return false; 
+          return false;
         }
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
@@ -641,7 +641,7 @@ static bool
 install_page (void *upage, void *kpage, bool writable)
 {
 #ifdef VM
-  return suppl_page_table_set_page (upage, kpage, writable);
+  return suppl_page_table_add_page (upage, kpage, writable);
 #else
   struct thread *t = thread_current ();
 

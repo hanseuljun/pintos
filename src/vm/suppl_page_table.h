@@ -1,10 +1,19 @@
 #ifndef SUPPL_PAGE_TABLE_H
 #define SUPPL_PAGE_TABLE_H
 
+#include <list.h>
 #include <stdbool.h>
 #include <stddef.h>
 
+struct suppl_page
+  {
+    void *upage;
+    void *kpage;
+    struct list_elem elem;
+  };
+
 void suppl_page_table_init (void);
-bool suppl_page_table_set_page (void *upage, void *kpage, bool writable);
+bool suppl_page_table_add_page (void *upage, void *kpage, bool writable);
+struct suppl_page *suppl_page_table_pop (void);
 
 #endif /* vm/suppl_page_table.h */

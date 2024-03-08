@@ -183,7 +183,7 @@ page_fault (struct intr_frame *f)
   if (write && ((uint8_t *) fault_addr) < ((uint8_t *) PHYS_BASE))
     {
       uint8_t *kpage = frame_table_get_page (0);
-      suppl_page_table_set_page(pg_round_down (fault_addr), kpage, true);
+      suppl_page_table_add_page(pg_round_down (fault_addr), kpage, true);
       return;
     }
 
