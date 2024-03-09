@@ -35,6 +35,11 @@ void swap_table_init (void)
   next_sector = 0;
 }
 
+bool swap_table_contains (void *upage)
+{
+  // TODO: implement 
+}
+
 void swap_table_push (void *upage, void *kpage)
 {
   struct block *swap_block = block_get_role (BLOCK_SWAP);

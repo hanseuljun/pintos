@@ -8,10 +8,11 @@
 
 void *frame_table_install (void *upage, enum palloc_flags flags, bool writable)
 {
+  // printf ("frame_table_install - 1\n");
   void *kpage = palloc_get_page (PAL_USER | flags);
   if (kpage == NULL)
     {
-      // printf ("frame_table_install - 1\n"); 
+      // printf ("frame_table_install - 2\n");
       // enum intr_level old_level;
       // old_level = intr_disable ();
 
@@ -28,8 +29,10 @@ void *frame_table_install (void *upage, enum palloc_flags flags, bool writable)
       // intr_set_level (old_level);
     }
 
+  // printf ("frame_table_install - 3\n");
   ASSERT (kpage != NULL);
   ASSERT (suppl_page_table_add_page(pg_round_down (upage), kpage, writable));
+  // printf ("frame_table_install - 4\n");
 
   return kpage;
 }
