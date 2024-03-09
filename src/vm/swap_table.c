@@ -37,11 +37,14 @@ void swap_table_init (void)
 
 bool swap_table_contains (void *upage)
 {
-  // TODO: implement 
+  ASSERT (pg_ofs (upage) == 0);
 }
 
 void swap_table_push (void *upage, void *kpage)
 {
+  ASSERT (pg_ofs (upage) == 0);
+  ASSERT (pg_ofs (kpage) == 0);
+
   struct block *swap_block = block_get_role (BLOCK_SWAP);
 
   struct swap_table_elem *elem = malloc (sizeof *elem);
