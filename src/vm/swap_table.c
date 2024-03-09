@@ -51,6 +51,25 @@ void swap_table_insert_and_save (void *upage, void *kpage, bool writable)
     }
 }
 
+void swap_table_load_and_remove (struct swap_table_elem *swap_table_elem, void *kpage)
+{
+  ASSERT (pg_ofs (kpage) == 0);
+
+  struct block *swap_block = block_get_role (BLOCK_SWAP);
+
+  block_sector_t sector = swap_table_elem->sector;
+  uint8_t *buffer = kpage;
+  for (int i = 0; i < (PGSIZE / BLOCK_SECTOR_SIZE); ++i)
+    {
+      // save kpage things in the swap_block
+      block_read (swap_block, sector, buffer);
+      ++sector;
+      buffer += BLOCK_SECTOR_SIZE;
+    }
+
+  ASSERT (hash_delete (&swap_hash, &swap_table_elem->hash_elem) != NULL);
+}
+
 struct swap_table_elem *swap_table_find (void *upage)
 {
   ASSERT (pg_ofs (upage) == 0);

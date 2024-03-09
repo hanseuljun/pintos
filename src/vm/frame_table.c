@@ -36,14 +36,17 @@ void *frame_table_install (void *upage, bool writable)
 void *frame_table_reinstall (void *upage)
 {
   ASSERT (pg_ofs (upage) == 0);
-  ASSERT (swap_table_find (upage) != NULL);
+
+  struct swap_table_elem *swap_table_elem = swap_table_find (upage);
+  ASSERT (swap_table_elem != NULL);
 
   // TODO:
   // 1. Get a new page based on how upage was originally assigned to a page.
   // 2. Copy the bytes from the swap block to the new page for address upage.
   // 3. Release that swap block from the swap table.
   // 4. Return the new page.
-  // void *kpage = frame_table_install ();
+  void *kpage = frame_table_install (upage, swap_table_elem->writable);
+  swap_table_load_and_remove (swap_table_elem, kpage);
 
-  return NULL;
+  return kpage;
 }
