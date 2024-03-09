@@ -1,6 +1,7 @@
 #include "suppl_page_table.h"
 #include <stdio.h>
 #include "threads/malloc.h"
+#include "threads/palloc.h"
 #include "threads/thread.h"
 #include "userprog/pagedir.h"
 
@@ -23,6 +24,8 @@ bool suppl_page_table_add_page (void *upage, void *kpage, bool writable)
     return false;
 
   struct suppl_page *suppl_page = malloc (sizeof *suppl_page);
+  suppl_page->upage = upage;
+  suppl_page->kpage = kpage;
   list_push_back (&suppl_page_list, &suppl_page->elem);
 
   return true;

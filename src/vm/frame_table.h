@@ -3,6 +3,6 @@
 
 #include "threads/palloc.h"
 
-void frame_table_install (void *upage, enum palloc_flags);
+void *frame_table_install (void *upage, enum palloc_flags);
 
 #endif /* vm/frame_table.h */
