@@ -31,7 +31,7 @@ bool suppl_page_table_add_page (void *upage, void *kpage, bool writable)
   return true;
 }
 
-struct suppl_page *suppl_page_table_pop (void)
+struct suppl_page *suppl_page_table_pop_front (void)
 {
   if (list_empty (&suppl_page_list))
     return NULL;

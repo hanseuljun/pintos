@@ -15,7 +15,7 @@ void *frame_table_install (void *upage, enum palloc_flags flags, bool writable)
       // enum intr_level old_level;
       // old_level = intr_disable ();
 
-      struct suppl_page *suppl_page = suppl_page_table_pop ();
+      struct suppl_page *suppl_page = suppl_page_table_pop_front ();
       palloc_free_page (suppl_page->kpage);
       // TODO: Implement swapping and pass page-linear. See 4.1.6 Managing the Swap Table.
       // 1. Put the bytes in suppl_page->kpage inside swap blocks
