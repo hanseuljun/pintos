@@ -40,6 +40,11 @@ void *frame_table_reinstall (void *upage)
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (swap_table_contains (upage));
 
+  // TODO:
+  // 1. Get a new page.
+  // 2. Copy the bytes from the swap block to the new page for address upage.
+  // 3. Release that swap block from the swap table.
+  // 4. Return the new page.
   // void *kpage = frame_table_install ();
 
   return NULL;

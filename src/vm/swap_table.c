@@ -1,15 +1,6 @@
 #include "swap_table.h"
-#include <hash.h>
-#include "devices/block.h"
 #include "threads/malloc.h"
 #include "threads/vaddr.h"
-
-struct swap_table_elem
-  {
-    void *upage;
-    block_sector_t sector;
-    struct hash_elem hash_elem;
-  };
 
 static struct hash swap_hash;
 static block_sector_t next_sector;
@@ -52,6 +43,8 @@ void swap_table_insert_and_save (void *upage, void *kpage)
 
   struct block *swap_block = block_get_role (BLOCK_SWAP);
 
+  // TODO: Pick the sector in a more sophisticated way,
+  // taking into account which were used and then freed.
   struct swap_table_elem *elem = malloc (sizeof *elem);
   elem->upage = upage;
   elem->sector = next_sector;
