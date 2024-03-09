@@ -423,7 +423,10 @@ load (const char *cmdline, void (**eip) (void), void **esp)
 
   /* Set up stack. */
   if (!setup_stack (esp))
-    goto done;
+    {
+      printf ("Failed to setup stack.\n");
+      goto done;
+    }
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
@@ -570,7 +573,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
 #ifdef VM
       /* Get a page of memory. */
-      uint8_t *kpage = frame_table_install (upage, 0);
+      uint8_t *kpage = frame_table_install (upage, 0, writable);
       if (kpage == NULL)
         return false;
 
@@ -596,7 +599,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
       /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable)) 
+      if (!install_page (upage, kpage, writable))
         {
           palloc_free_page (kpage);
           return false; 

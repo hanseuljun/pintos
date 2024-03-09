@@ -6,12 +6,12 @@
 #include "vm/suppl_page_table.h"
 #include "vm/swap_table.h"
 
-void *frame_table_install (void *upage, enum palloc_flags flags)
+void *frame_table_install (void *upage, enum palloc_flags flags, bool writable)
 {
   void *kpage = palloc_get_page (PAL_USER | flags);
   if (kpage == NULL)
     {
-      printf ("frame_table_install - 1\n");
+      // printf ("frame_table_install - 1\n"); 
       // enum intr_level old_level;
       // old_level = intr_disable ();
 
@@ -29,7 +29,7 @@ void *frame_table_install (void *upage, enum palloc_flags flags)
     }
 
   ASSERT (kpage != NULL);
-  ASSERT (suppl_page_table_add_page(pg_round_down (upage), kpage, true));
+  ASSERT (suppl_page_table_add_page(pg_round_down (upage), kpage, writable));
 
   return kpage;
 }
