@@ -26,7 +26,7 @@ void swap_table_init (void)
   next_sector = 0;
 }
 
-void swap_table_insert_and_save (void *upage, void *kpage)
+void swap_table_insert_and_save (void *upage, void *kpage, bool writable)
 {
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (pg_ofs (kpage) == 0);
@@ -37,6 +37,7 @@ void swap_table_insert_and_save (void *upage, void *kpage)
   // taking into account which were used and then freed.
   struct swap_table_elem *elem = malloc (sizeof *elem);
   elem->upage = upage;
+  elem->writable = writable;
   elem->sector = next_sector;
   hash_insert (&swap_hash, &elem->hash_elem);
 

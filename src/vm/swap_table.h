@@ -8,12 +8,13 @@
 struct swap_table_elem
   {
     void *upage;
+    bool writable;
     block_sector_t sector;
     struct hash_elem hash_elem;
   };
 
 void swap_table_init (void);
-void swap_table_insert_and_save (void *upage, void *kpage);
+void swap_table_insert_and_save (void *upage, void *kpage, bool writable);
 /* Returns a null pointer when not found. */
 struct swap_table_elem *swap_table_find (void *upage);
 

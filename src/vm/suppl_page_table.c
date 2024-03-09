@@ -26,6 +26,7 @@ bool suppl_page_table_add_page (void *upage, void *kpage, bool writable)
   struct suppl_page *suppl_page = malloc (sizeof *suppl_page);
   suppl_page->upage = upage;
   suppl_page->kpage = kpage;
+  suppl_page->writable = writable;
   list_push_back (&suppl_page_list, &suppl_page->elem);
 
   return true;

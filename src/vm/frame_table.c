@@ -20,7 +20,7 @@ void *frame_table_install (void *upage, bool writable)
       struct suppl_page *suppl_page = suppl_page_table_pop_front ();
       palloc_free_page (suppl_page->kpage);
 
-      swap_table_insert_and_save (suppl_page->upage, suppl_page->kpage);
+      swap_table_insert_and_save (suppl_page->upage, suppl_page->kpage, writable);
 
       /* Try again as one of the pages has been swapped. */
       kpage = palloc_get_page (PAL_USER);

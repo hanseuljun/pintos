@@ -9,6 +9,7 @@ struct suppl_page
   {
     void *upage;
     void *kpage;
+    bool writable;
     struct list_elem elem;
   };
 
