@@ -45,7 +45,7 @@ bool swap_table_contains (void *upage)
   return hash_find (&swap_hash, &elem_for_find.hash_elem) != NULL;
 }
 
-void swap_table_push (void *upage, void *kpage)
+void swap_table_insert_and_save (void *upage, void *kpage)
 {
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (pg_ofs (kpage) == 0);
@@ -55,6 +55,7 @@ void swap_table_push (void *upage, void *kpage)
   struct swap_table_elem *elem = malloc (sizeof *elem);
   elem->upage = upage;
   elem->sector = next_sector;
+  hash_insert (&swap_hash, &elem->hash_elem);
 
   uint8_t *buffer = kpage;
   for (int i = 0; i < (PGSIZE / BLOCK_SECTOR_SIZE); ++i)
@@ -65,5 +66,4 @@ void swap_table_push (void *upage, void *kpage)
       buffer += BLOCK_SECTOR_SIZE;
     }
 
-  hash_insert (&swap_hash, &elem->hash_elem);
 }

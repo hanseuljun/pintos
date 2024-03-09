@@ -20,12 +20,8 @@ void *frame_table_install (void *upage, enum palloc_flags flags, bool writable)
 
       struct suppl_page *suppl_page = suppl_page_table_pop_front ();
       palloc_free_page (suppl_page->kpage);
-      // TODO: Implement swapping and pass page-linear. See 4.1.6 Managing the Swap Table.
-      // 1. Put the bytes in suppl_page->kpage inside swap blocks
-      // 2. Map suppl_page->upage to the swap blocks for later.
-      // Will need to bring back these swap blocks when suppl_page->upage gets accessed.
-      // 3. Move on to the below palloc_get_page call since now there is an available page.
-      swap_table_push (suppl_page->upage, suppl_page->kpage);
+
+      swap_table_insert_and_save (suppl_page->upage, suppl_page->kpage);
 
       kpage = palloc_get_page (PAL_USER | flags);
       // intr_set_level (old_level);
@@ -42,6 +38,9 @@ void *frame_table_install (void *upage, enum palloc_flags flags, bool writable)
 void *frame_table_reinstall (void *upage)
 {
   ASSERT (pg_ofs (upage) == 0);
-  // TODO: implement
+  ASSERT (swap_table_contains (upage));
+
+  // void *kpage = frame_table_install ();
+
   return NULL;
 }

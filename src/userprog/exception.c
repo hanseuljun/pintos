@@ -168,6 +168,11 @@ page_fault (struct intr_frame *f)
   //         user ? "user" : "kernel");
 
   // printf ("swap_table_contains: %d\n", swap_table_contains (pg_round_down (fault_addr)));
+  if (swap_table_contains (pg_round_down (fault_addr)))
+    {
+      frame_table_reinstall (pg_round_down (fault_addr));
+      return;
+    }
 
   if (!user)
     {
