@@ -38,6 +38,11 @@ void swap_table_init (void)
 bool swap_table_contains (void *upage)
 {
   ASSERT (pg_ofs (upage) == 0);
+  
+  struct swap_table_elem elem_for_find;
+  elem_for_find.upage = upage;
+
+  return hash_find (&swap_hash, &elem_for_find.hash_elem) != NULL;
 }
 
 void swap_table_push (void *upage, void *kpage)
