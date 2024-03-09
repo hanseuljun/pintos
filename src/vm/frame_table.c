@@ -8,6 +8,8 @@
 
 void *frame_table_install (void *upage, enum palloc_flags flags, bool writable)
 {
+  ASSERT (pg_ofs (upage) == 0);
+
   // printf ("frame_table_install - 1\n");
   void *kpage = palloc_get_page (PAL_USER | flags);
   if (kpage == NULL)
@@ -31,8 +33,15 @@ void *frame_table_install (void *upage, enum palloc_flags flags, bool writable)
 
   // printf ("frame_table_install - 3\n");
   ASSERT (kpage != NULL);
-  ASSERT (suppl_page_table_add_page(pg_round_down (upage), kpage, writable));
+  ASSERT (suppl_page_table_add_page(upage, kpage, writable));
   // printf ("frame_table_install - 4\n");
 
   return kpage;
+}
+
+void *frame_table_reinstall (void *upage)
+{
+  ASSERT (pg_ofs (upage) == 0);
+  // TODO: implement
+  return NULL;
 }

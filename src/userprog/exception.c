@@ -161,13 +161,13 @@ page_fault (struct intr_frame *f)
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
   /* Commenting below code to pass tests. Uncomment when needed for debugging. */
-  printf ("Page fault at %p: %s error %s page in %s context.\n",
-          fault_addr,
-          not_present ? "not present" : "rights violation",
-          write ? "writing" : "reading",
-          user ? "user" : "kernel");
+  // printf ("Page fault at %p: %s error %s page in %s context.\n",
+  //         fault_addr,
+  //         not_present ? "not present" : "rights violation",
+  //         write ? "writing" : "reading",
+  //         user ? "user" : "kernel");
 
-  printf ("contains: %d\n", swap_table_contains (pg_round_down (fault_addr)));
+  // printf ("swap_table_contains: %d\n", swap_table_contains (pg_round_down (fault_addr)));
 
   if (!user)
     {
@@ -185,7 +185,7 @@ page_fault (struct intr_frame *f)
   /* Install a user virtual page for fault_addr when user is writing and the address belongs to user virtual memory. */
   if (write && ((uint8_t *) fault_addr) < ((uint8_t *) PHYS_BASE))
     {
-      frame_table_install (fault_addr, 0, true);
+      frame_table_install (pg_round_down (fault_addr), 0, true);
       return;
     }
 
