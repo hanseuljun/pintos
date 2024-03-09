@@ -359,6 +359,13 @@ load (const char *cmdline, void (**eip) (void), void **esp)
       goto done; 
     }
 
+  /* Set up stack. */
+  if (!setup_stack (esp))
+    {
+      printf ("Failed to setup stack.\n");
+      goto done;
+    }
+
   /* Read program headers. */
   file_ofs = ehdr.e_phoff;
   for (i = 0; i < ehdr.e_phnum; i++) 
@@ -419,13 +426,6 @@ load (const char *cmdline, void (**eip) (void), void **esp)
             goto done;
           break;
         }
-    }
-
-  /* Set up stack. */
-  if (!setup_stack (esp))
-    {
-      printf ("Failed to setup stack.\n");
-      goto done;
     }
 
   /* Start address. */
