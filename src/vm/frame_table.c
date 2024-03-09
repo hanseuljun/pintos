@@ -38,10 +38,10 @@ void *frame_table_install (void *upage, enum palloc_flags flags, bool writable)
 void *frame_table_reinstall (void *upage)
 {
   ASSERT (pg_ofs (upage) == 0);
-  ASSERT (swap_table_contains (upage));
+  ASSERT (swap_table_find (upage) != NULL);
 
   // TODO:
-  // 1. Get a new page.
+  // 1. Get a new page based on how upage was originally assigned to a page.
   // 2. Copy the bytes from the swap block to the new page for address upage.
   // 3. Release that swap block from the swap table.
   // 4. Return the new page.

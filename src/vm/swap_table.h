@@ -13,7 +13,8 @@ struct swap_table_elem
   };
 
 void swap_table_init (void);
-bool swap_table_contains (void *upage);
 void swap_table_insert_and_save (void *upage, void *kpage);
+/* Returns a null pointer when not found. */
+struct swap_table_elem *swap_table_find (void *upage);
 
 #endif /* vm/swap_table.h */

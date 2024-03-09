@@ -26,16 +26,6 @@ void swap_table_init (void)
   next_sector = 0;
 }
 
-bool swap_table_contains (void *upage)
-{
-  ASSERT (pg_ofs (upage) == 0);
-  
-  struct swap_table_elem elem_for_find;
-  elem_for_find.upage = upage;
-
-  return hash_find (&swap_hash, &elem_for_find.hash_elem) != NULL;
-}
-
 void swap_table_insert_and_save (void *upage, void *kpage)
 {
   ASSERT (pg_ofs (upage) == 0);
@@ -58,5 +48,19 @@ void swap_table_insert_and_save (void *upage, void *kpage)
       ++next_sector;
       buffer += BLOCK_SECTOR_SIZE;
     }
+}
 
+struct swap_table_elem *swap_table_find (void *upage)
+{
+  ASSERT (pg_ofs (upage) == 0);
+  
+  struct swap_table_elem elem_for_find;
+  elem_for_find.upage = upage;
+
+  struct hash_elem *hash_elem = hash_find (&swap_hash, &elem_for_find.hash_elem);
+  if (hash_elem == NULL)
+    return NULL;
+
+  struct swap_table_elem *elem = hash_entry (hash_elem, struct swap_table_elem, hash_elem);
+  return elem;
 }
