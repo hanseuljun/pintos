@@ -168,11 +168,11 @@ page_fault (struct intr_frame *f)
   //         user ? "user" : "kernel");
 
   // printf ("swap_table_contains: %d\n", swap_table_contains (pg_round_down (fault_addr)));
-  if (swap_table_find (pg_round_down (fault_addr)) != NULL)
-    {
-      frame_table_reinstall (pg_round_down (fault_addr));
-      return;
-    }
+  // if (swap_table_find (pg_round_down (fault_addr)) != NULL)
+  //   {
+  //     frame_table_reinstall (pg_round_down (fault_addr));
+  //     return;
+  //   }
 
   if (!user)
     {
@@ -190,7 +190,7 @@ page_fault (struct intr_frame *f)
   /* Install a user virtual page for fault_addr when user is writing and the address belongs to user virtual memory. */
   if (write && ((uint8_t *) fault_addr) < ((uint8_t *) PHYS_BASE))
     {
-      frame_table_install (pg_round_down (fault_addr), 0, true);
+      frame_table_install (pg_round_down (fault_addr), true);
       return;
     }
 

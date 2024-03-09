@@ -2,19 +2,18 @@
 #include <stdio.h>
 #include "devices/block.h"
 #include "threads/interrupt.h"
+#include "threads/palloc.h"
 #include "threads/vaddr.h"
 #include "vm/suppl_page_table.h"
 #include "vm/swap_table.h"
 
-void *frame_table_install (void *upage, enum palloc_flags flags, bool writable)
+void *frame_table_install (void *upage, bool writable)
 {
   ASSERT (pg_ofs (upage) == 0);
 
-  // printf ("frame_table_install - 1\n");
-  void *kpage = palloc_get_page (PAL_USER | flags);
+  void *kpage = palloc_get_page (PAL_USER);
   if (kpage == NULL)
     {
-      // printf ("frame_table_install - 2\n");
       // enum intr_level old_level;
       // old_level = intr_disable ();
 
@@ -23,14 +22,13 @@ void *frame_table_install (void *upage, enum palloc_flags flags, bool writable)
 
       swap_table_insert_and_save (suppl_page->upage, suppl_page->kpage);
 
-      kpage = palloc_get_page (PAL_USER | flags);
+      /* Try again as one of the pages has been swapped. */
+      kpage = palloc_get_page (PAL_USER);
       // intr_set_level (old_level);
     }
 
-  // printf ("frame_table_install - 3\n");
   ASSERT (kpage != NULL);
   ASSERT (suppl_page_table_add_page(upage, kpage, writable));
-  // printf ("frame_table_install - 4\n");
 
   return kpage;
 }

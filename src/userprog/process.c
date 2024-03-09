@@ -573,7 +573,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
 #ifdef VM
       /* Get a page of memory. */
-      uint8_t *kpage = frame_table_install (upage, 0, writable);
+      uint8_t *kpage = frame_table_install (upage, writable);
       if (kpage == NULL)
         return false;
 
