@@ -17,7 +17,10 @@ void *frame_table_install (void *upage, bool writable)
       // enum intr_level old_level;
       // old_level = intr_disable ();
 
-      struct suppl_page *suppl_page = suppl_page_table_pop_front ();
+      // Swapping non-writable pages caused error messages like
+      // "Interrupt 0x03 (#BP Breakpoint Exception)" described in E.8 Tips.
+      // So, only swapping writable pages, at least for now.
+      struct suppl_page *suppl_page = suppl_page_table_pop_writable ();
       palloc_free_page (suppl_page->kpage);
 
       swap_table_insert_and_save (suppl_page->upage, suppl_page->kpage, writable);
@@ -30,6 +33,7 @@ void *frame_table_install (void *upage, bool writable)
   ASSERT (kpage != NULL);
   ASSERT (suppl_page_table_add_page(upage, kpage, writable));
 
+  // printf ("frame_table_install, upage: %p\n", upage);
   return kpage;
 }
 

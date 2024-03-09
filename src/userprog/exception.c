@@ -167,7 +167,7 @@ page_fault (struct intr_frame *f)
   //         write ? "writing" : "reading",
   //         user ? "user" : "kernel");
 
-  // printf ("swap_table_contains: %d\n", swap_table_contains (pg_round_down (fault_addr)));
+  // printf ("swap_table_find: %p\n", swap_table_find (pg_round_down (fault_addr)));
   if (swap_table_find (pg_round_down (fault_addr)) != NULL)
     {
       frame_table_reinstall (pg_round_down (fault_addr));

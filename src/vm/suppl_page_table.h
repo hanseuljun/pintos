@@ -15,6 +15,6 @@ struct suppl_page
 
 void suppl_page_table_init (void);
 bool suppl_page_table_add_page (void *upage, void *kpage, bool writable);
-struct suppl_page *suppl_page_table_pop_front (void);
+struct suppl_page *suppl_page_table_pop_writable (void);
 
 #endif /* vm/suppl_page_table.h */

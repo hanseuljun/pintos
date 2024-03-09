@@ -562,6 +562,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT (ofs % PGSIZE == 0);
   ASSERT (lock_held_by_current_thread (&global_filesys_lock));
 
+  // printf ("load_segment, read_bytes: %d, zero_bytes: %d, writable: %d\n", read_bytes, zero_bytes, writable);
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {
