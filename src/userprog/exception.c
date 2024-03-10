@@ -181,12 +181,14 @@ page_fault (struct intr_frame *f)
       NOT_REACHED ();
     }
 
+  // TODO: Instead of installing a page for a addresses below PHYS_BASE,
+  // do it only when the fault address belongs to the stack.
   /* Install a user virtual page for fault_addr when user is writing and the address belongs to user virtual memory. */
-  if (write && ((uint8_t *) fault_addr) < ((uint8_t *) PHYS_BASE))
-    {
-      frame_table_install (pg_round_down (fault_addr), true);
-      return;
-    }
+  // if (write && ((uint8_t *) fault_addr) < ((uint8_t *) PHYS_BASE))
+  //   {
+  //     frame_table_install (pg_round_down (fault_addr), true);
+  //     return;
+  //   }
 
   syscall_exit (-1);
   NOT_REACHED ();
