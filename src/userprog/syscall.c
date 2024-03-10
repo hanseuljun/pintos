@@ -425,6 +425,9 @@ is_uaddr_valid (const void *uaddr)
 {
   uint32_t *pd;
 
+#ifdef VM
+  return is_user_vaddr (uaddr + 3);
+#else
   /* Examine the byte with the highest address. */
   if (!is_user_vaddr (uaddr + 3))
     return false;
@@ -433,6 +436,7 @@ is_uaddr_valid (const void *uaddr)
   /* Examine bytes at the both ends of the 4-byte address. */
   return pagedir_get_page (pd, uaddr) != NULL
       && pagedir_get_page (pd, uaddr + 3) != NULL;
+#endif
 }
 
 static bool
