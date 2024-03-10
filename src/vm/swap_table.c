@@ -1,5 +1,6 @@
 #include "swap_table.h"
 #include <bitmap.h>
+#include <stdio.h>
 #include "threads/malloc.h"
 #include "threads/vaddr.h"
 
@@ -8,7 +9,7 @@
 #define SECTOR_GROUP_SIZE (PGSIZE / BLOCK_SECTOR_SIZE)
 
 static struct hash swap_hash;
-static uint32_t next_sector_group;
+static struct bitmap *sector_group_occupancy;
 
 struct swap_table_elem
   {
@@ -36,7 +37,9 @@ static bool swap_table_less_func (const struct hash_elem *a,
 void swap_table_init (void)
 {
   hash_init (&swap_hash, &swap_table_hash_func, &swap_table_less_func, NULL);
-  next_sector_group = 0;
+
+  struct block *swap_block = block_get_role (BLOCK_SWAP);
+  sector_group_occupancy = bitmap_create (block_size (swap_block) / SECTOR_GROUP_SIZE);
 }
 
 void swap_table_insert_and_save (void *upage, void *kpage, bool writable)
@@ -45,16 +48,20 @@ void swap_table_insert_and_save (void *upage, void *kpage, bool writable)
   ASSERT (pg_ofs (kpage) == 0);
 
   struct block *swap_block = block_get_role (BLOCK_SWAP);
+  uint32_t sector_group = bitmap_scan (sector_group_occupancy, 0, bitmap_size (sector_group_occupancy), false);
+  printf ("sector_group_occupancy: %p\n", sector_group_occupancy);
+  printf ("bitmap_size (sector_group_occupancy): %ld\n", bitmap_size (sector_group_occupancy));
+  printf ("swap_table_insert_and_save, sector_group: %d\n", sector_group);
+  bitmap_set (sector_group_occupancy, sector_group, true);
 
-  // TODO: Pick the sector in a more sophisticated way,
-  // taking into account which were used and then freed.
   struct swap_table_elem *elem = malloc (sizeof *elem);
   elem->upage = upage;
   elem->writable = writable;
-  elem->sector_group = next_sector_group;
+  elem->sector_group = sector_group;
   hash_insert (&swap_hash, &elem->hash_elem);
 
-  block_sector_t sector = next_sector_group * SECTOR_GROUP_SIZE;
+
+  block_sector_t sector = sector_group * SECTOR_GROUP_SIZE;
   uint8_t *buffer = kpage;
   for (int i = 0; i < SECTOR_GROUP_SIZE; ++i)
     {
@@ -63,8 +70,6 @@ void swap_table_insert_and_save (void *upage, void *kpage, bool writable)
       ++sector;
       buffer += BLOCK_SECTOR_SIZE;
     }
-  
-  ++next_sector_group;
 }
 
 void swap_table_load_and_remove (struct swap_table_elem *swap_table_elem, void *kpage)
@@ -82,6 +87,8 @@ void swap_table_load_and_remove (struct swap_table_elem *swap_table_elem, void *
       ++sector;
       buffer += BLOCK_SECTOR_SIZE;
     }
+
+  bitmap_set (sector_group_occupancy, swap_table_elem->sector_group, false);
 
   ASSERT (hash_delete (&swap_hash, &swap_table_elem->hash_elem) != NULL);
 }
