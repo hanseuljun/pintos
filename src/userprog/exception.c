@@ -176,7 +176,7 @@ page_fault (struct intr_frame *f)
 
   if (!user)
     {
-      kill (f);
+      syscall_exit (-1);
       NOT_REACHED ();
     }
 

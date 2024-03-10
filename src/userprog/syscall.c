@@ -59,6 +59,11 @@ syscall_exit (int status)
   struct fd_info *fd_info;
   int i;
 
+#ifdef VM
+  if (lock_held_by_current_thread (&global_filesys_lock))
+    lock_release (&global_filesys_lock);
+#endif
+
   /* Pass status to parent. */
   int parent_tid = t->parent_tid;
   if (parent_tid != TID_ERROR)
