@@ -174,12 +174,6 @@ page_fault (struct intr_frame *f)
       return;
     }
 
-  if (!user)
-    {
-      syscall_exit (-1);
-      NOT_REACHED ();
-    }
-
   /* Exit if fault_addr is too low, reaching under the addresses for the code segment. */
   if (((uint8_t *) fault_addr) < ((uint8_t *) 0x08084000))
     {

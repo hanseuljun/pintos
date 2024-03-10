@@ -423,11 +423,11 @@ find_available_fd (void)
 static bool
 is_uaddr_valid (const void *uaddr)
 {
-  uint32_t *pd;
-
 #ifdef VM
   return is_user_vaddr (uaddr + 3);
 #else
+  uint32_t *pd;
+
   /* Examine the byte with the highest address. */
   if (!is_user_vaddr (uaddr + 3))
     return false;
