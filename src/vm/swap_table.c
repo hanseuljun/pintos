@@ -10,6 +10,14 @@
 static struct hash swap_hash;
 static uint32_t next_sector_group;
 
+struct swap_table_elem
+  {
+    void *upage;
+    bool writable;
+    uint32_t sector_group;
+    struct hash_elem hash_elem;
+  };
+
 static unsigned swap_table_hash_func (const struct hash_elem *e, void *aux UNUSED)
 {
   struct swap_table_elem *elem = hash_entry (e, struct swap_table_elem, hash_elem);
@@ -91,4 +99,9 @@ struct swap_table_elem *swap_table_find (void *upage)
 
   struct swap_table_elem *elem = hash_entry (hash_elem, struct swap_table_elem, hash_elem);
   return elem;
+}
+
+bool swap_table_elem_is_writable (struct swap_table_elem *swap_table_elem)
+{
+  return swap_table_elem->writable;
 }

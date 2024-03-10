@@ -5,18 +5,14 @@
 #include <stdbool.h>
 #include "devices/block.h"
 
-struct swap_table_elem
-  {
-    void *upage;
-    bool writable;
-    uint32_t sector_group;
-    struct hash_elem hash_elem;
-  };
+struct swap_table_elem;
 
 void swap_table_init (void);
 void swap_table_insert_and_save (void *upage, void *kpage, bool writable);
 void swap_table_load_and_remove (struct swap_table_elem *swap_table_elem, void *kpage);
 /* Returns a null pointer when not found. */
 struct swap_table_elem *swap_table_find (void *upage);
+
+bool swap_table_elem_is_writable (struct swap_table_elem *swap_table_elem);
 
 #endif /* vm/swap_table.h */
