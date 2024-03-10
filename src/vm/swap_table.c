@@ -48,10 +48,7 @@ void swap_table_insert_and_save (void *upage, void *kpage, bool writable)
   ASSERT (pg_ofs (kpage) == 0);
 
   struct block *swap_block = block_get_role (BLOCK_SWAP);
-  uint32_t sector_group = bitmap_scan (sector_group_occupancy, 0, bitmap_size (sector_group_occupancy), false);
-  printf ("sector_group_occupancy: %p\n", sector_group_occupancy);
-  printf ("bitmap_size (sector_group_occupancy): %ld\n", bitmap_size (sector_group_occupancy));
-  printf ("swap_table_insert_and_save, sector_group: %d\n", sector_group);
+  uint32_t sector_group = bitmap_scan (sector_group_occupancy, 0, 1, false);
   bitmap_set (sector_group_occupancy, sector_group, true);
 
   struct swap_table_elem *elem = malloc (sizeof *elem);
