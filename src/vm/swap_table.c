@@ -5,7 +5,7 @@
 static struct hash swap_hash;
 static block_sector_t next_sector;
 
-static unsigned swap_table_hash_func (const struct hash_elem *e, void *aux)
+static unsigned swap_table_hash_func (const struct hash_elem *e, void *aux UNUSED)
 {
   struct swap_table_elem *elem = hash_entry (e, struct swap_table_elem, hash_elem);
   return (unsigned) elem->upage;
@@ -13,7 +13,7 @@ static unsigned swap_table_hash_func (const struct hash_elem *e, void *aux)
 
 static bool swap_table_less_func (const struct hash_elem *a,
                                   const struct hash_elem *b,
-                                  void *aux)
+                                  void *aux UNUSED)
 {
   struct swap_table_elem *elem_a = hash_entry (a, struct swap_table_elem, hash_elem);
   struct swap_table_elem *elem_b = hash_entry (b, struct swap_table_elem, hash_elem);
