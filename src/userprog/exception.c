@@ -2,6 +2,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include "userprog/gdt.h"
+#include "userprog/pagedir.h"
 #include "userprog/syscall.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
@@ -187,11 +188,17 @@ page_fault (struct intr_frame *f)
   && ((uint8_t *) fault_addr) < ((uint8_t *) PHYS_BASE)
   && ((uint8_t *) fault_addr) >= ((uint8_t *) f->esp - 32))
     {
-      // TODO: install all pages from PHYS_BASE down to fault_addr.
-      // uint8_t *lowest_page_to_install = pg_round_down (fault_addr);
-      // uint8_t *highest_page_to_install = lowest_page_to_install + (uint8_t *) PHYS_BASE;
+      /* Install all pages from PHYS_BASE down to fault_addr. */
+      uint32_t *pd = thread_current ()->pagedir;
+      for (uint8_t *upage = PHYS_BASE - PGSIZE; upage >= (uint8_t *) pg_round_down (fault_addr); upage -= PGSIZE)
+        {
+          if (pagedir_get_page (pd, upage) != NULL)
+            continue;
+          if (swap_table_find (upage) != NULL)
+            continue;
+          frame_table_install (upage, true);
+        }
       
-      frame_table_install (pg_round_down (fault_addr), true);
       return;
     }
 
