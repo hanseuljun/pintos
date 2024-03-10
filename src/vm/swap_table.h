@@ -9,7 +9,7 @@ struct swap_table_elem
   {
     void *upage;
     bool writable;
-    block_sector_t sector;
+    uint32_t sector_group;
     struct hash_elem hash_elem;
   };
 

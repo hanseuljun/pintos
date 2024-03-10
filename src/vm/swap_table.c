@@ -1,4 +1,5 @@
 #include "swap_table.h"
+#include <bitmap.h>
 #include "threads/malloc.h"
 #include "threads/vaddr.h"
 
@@ -7,7 +8,7 @@
 #define SECTOR_GROUP_SIZE (PGSIZE / BLOCK_SECTOR_SIZE)
 
 static struct hash swap_hash;
-static block_sector_t next_sector;
+static uint32_t next_sector_group;
 
 static unsigned swap_table_hash_func (const struct hash_elem *e, void *aux UNUSED)
 {
@@ -27,7 +28,7 @@ static bool swap_table_less_func (const struct hash_elem *a,
 void swap_table_init (void)
 {
   hash_init (&swap_hash, &swap_table_hash_func, &swap_table_less_func, NULL);
-  next_sector = 0;
+  next_sector_group = 0;
 }
 
 void swap_table_insert_and_save (void *upage, void *kpage, bool writable)
@@ -42,17 +43,20 @@ void swap_table_insert_and_save (void *upage, void *kpage, bool writable)
   struct swap_table_elem *elem = malloc (sizeof *elem);
   elem->upage = upage;
   elem->writable = writable;
-  elem->sector = next_sector;
+  elem->sector_group = next_sector_group;
   hash_insert (&swap_hash, &elem->hash_elem);
 
+  block_sector_t sector = next_sector_group * SECTOR_GROUP_SIZE;
   uint8_t *buffer = kpage;
-  for (int i = 0; i < (SECTOR_GROUP_SIZE); ++i)
+  for (int i = 0; i < SECTOR_GROUP_SIZE; ++i)
     {
-      // save kpage things in the swap_block
-      block_write (swap_block, next_sector, buffer);
-      ++next_sector;
+      // save kpage bytes in the swap_block
+      block_write (swap_block, sector, buffer);
+      ++sector;
       buffer += BLOCK_SECTOR_SIZE;
     }
+  
+  ++next_sector_group;
 }
 
 void swap_table_load_and_remove (struct swap_table_elem *swap_table_elem, void *kpage)
@@ -61,9 +65,9 @@ void swap_table_load_and_remove (struct swap_table_elem *swap_table_elem, void *
 
   struct block *swap_block = block_get_role (BLOCK_SWAP);
 
-  block_sector_t sector = swap_table_elem->sector;
+  block_sector_t sector = swap_table_elem->sector_group * SECTOR_GROUP_SIZE;
   uint8_t *buffer = kpage;
-  for (int i = 0; i < (SECTOR_GROUP_SIZE); ++i)
+  for (int i = 0; i < SECTOR_GROUP_SIZE; ++i)
     {
       // save kpage things in the swap_block
       block_read (swap_block, sector, buffer);
