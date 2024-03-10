@@ -188,7 +188,6 @@ page_fault (struct intr_frame *f)
   && ((uint8_t *) fault_addr) >= ((uint8_t *) f->esp - 32))
     {
       frame_table_install (pg_round_down (fault_addr), true);
-      frame_table_set_stack_size (frame_table_get_stack_size() + PGSIZE);
       return;
     }
 

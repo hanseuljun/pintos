@@ -32,7 +32,6 @@
 #include "tests/threads/tests.h"
 #endif
 #ifdef VM
-#include "vm/frame_table.h"
 #include "vm/suppl_page_table.h"
 #include "vm/swap_table.h"
 #endif
@@ -133,7 +132,6 @@ main (void)
 #endif
 
 #ifdef VM
-  frame_table_init ();
   suppl_page_table_init ();
   swap_table_init ();
 #endif

@@ -630,9 +630,6 @@ setup_stack (void **esp)
       if (success)
         {
           *esp = PHYS_BASE;
-#if VM
-          frame_table_set_stack_size (PGSIZE);
-#endif
         }
       else
         {
