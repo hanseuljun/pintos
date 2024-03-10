@@ -167,7 +167,7 @@ page_fault (struct intr_frame *f)
   //         write ? "writing" : "reading",
   //         user ? "user" : "kernel");
 
-  // printf ("swap_table_find: %p\n", swap_table_find (pg_round_down (fault_addr)));
+  /* Swap in the page if the page exists in the swap table. */
   if (swap_table_find (pg_round_down (fault_addr)) != NULL)
     {
       frame_table_reinstall (pg_round_down (fault_addr));
@@ -183,10 +183,14 @@ page_fault (struct intr_frame *f)
 
   /* Install a user virtual page for fault_addr when user is writing and the address belongs to user stack.
      Gives additional 32 bytes of leeway to support stack growth by PUSHA. See 4.3.3 Stack Growth. */
-  if (write
+  if (user && write
   && ((uint8_t *) fault_addr) < ((uint8_t *) PHYS_BASE)
   && ((uint8_t *) fault_addr) >= ((uint8_t *) f->esp - 32))
     {
+      // TODO: install all pages from PHYS_BASE down to fault_addr.
+      // uint8_t *lowest_page_to_install = pg_round_down (fault_addr);
+      // uint8_t *highest_page_to_install = lowest_page_to_install + (uint8_t *) PHYS_BASE;
+      
       frame_table_install (pg_round_down (fault_addr), true);
       return;
     }
