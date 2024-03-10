@@ -7,6 +7,13 @@
 #include "vm/suppl_page_table.h"
 #include "vm/swap_table.h"
 
+static size_t stack_size;
+
+void frame_table_init ()
+{
+  stack_size = 0;
+}
+
 void *frame_table_install (void *upage, bool writable)
 {
   ASSERT (pg_ofs (upage) == 0);
@@ -47,4 +54,14 @@ void *frame_table_reinstall (void *upage)
   swap_table_load_and_remove (swap_table_elem, kpage);
 
   return kpage;
+}
+
+size_t frame_table_get_stack_size (void)
+{
+  return stack_size;
+}
+
+void frame_table_set_stack_size (size_t size)
+{
+  stack_size = size;
 }
