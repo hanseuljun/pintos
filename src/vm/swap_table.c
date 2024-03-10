@@ -2,6 +2,10 @@
 #include "threads/malloc.h"
 #include "threads/vaddr.h"
 
+/* SECTOR_GROUP_SIZE is 8 (=4096 / 512). It incidates how many
+   block sectors are needed to save a page. */
+#define SECTOR_GROUP_SIZE (PGSIZE / BLOCK_SECTOR_SIZE)
+
 static struct hash swap_hash;
 static block_sector_t next_sector;
 
@@ -42,7 +46,7 @@ void swap_table_insert_and_save (void *upage, void *kpage, bool writable)
   hash_insert (&swap_hash, &elem->hash_elem);
 
   uint8_t *buffer = kpage;
-  for (int i = 0; i < (PGSIZE / BLOCK_SECTOR_SIZE); ++i)
+  for (int i = 0; i < (SECTOR_GROUP_SIZE); ++i)
     {
       // save kpage things in the swap_block
       block_write (swap_block, next_sector, buffer);
@@ -59,7 +63,7 @@ void swap_table_load_and_remove (struct swap_table_elem *swap_table_elem, void *
 
   block_sector_t sector = swap_table_elem->sector;
   uint8_t *buffer = kpage;
-  for (int i = 0; i < (PGSIZE / BLOCK_SECTOR_SIZE); ++i)
+  for (int i = 0; i < (SECTOR_GROUP_SIZE); ++i)
     {
       // save kpage things in the swap_block
       block_read (swap_block, sector, buffer);
