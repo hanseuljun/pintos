@@ -70,9 +70,13 @@ process_execute (const char *cmdline)
     return TID_ERROR;
   strlcpy (fn_copy, cmdline, PGSIZE);
 
+  /* With virtual memory enabled, lack of palloc availability should not be a problem.
+     Lack of available pages should be dealt with swapping. */
+#ifndef VM
   /* Check if there are plenty memory left for start_process to not fail. */
   if (palloc_get_available_capcity (PAL_USER) < REQUIRED_PALLOC_AVAILABLE_CAPACITY)
     return TID_ERROR;
+#endif
 
   /* Create a new thread to execute CMDLINE. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
@@ -620,6 +624,12 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
+#ifdef VM
+  frame_table_install (((uint8_t *) PHYS_BASE) - PGSIZE, true);
+  memset (((uint8_t *) PHYS_BASE) - PGSIZE, 0, PGSIZE);
+  *esp = PHYS_BASE;
+  return true;
+#else
   uint8_t *kpage;
   bool success = false;
 
@@ -637,6 +647,7 @@ setup_stack (void **esp)
         }
     }
   return success;
+#endif
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel

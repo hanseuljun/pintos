@@ -32,7 +32,6 @@ void *frame_table_install (void *upage, bool writable)
   ASSERT (kpage != NULL);
   ASSERT (suppl_page_table_add_page(upage, kpage, writable));
 
-  // printf ("frame_table_install, upage: %p\n", upage);
   return kpage;
 }
 
