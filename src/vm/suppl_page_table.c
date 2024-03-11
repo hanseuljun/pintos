@@ -5,6 +5,14 @@
 #include "threads/thread.h"
 #include "userprog/pagedir.h"
 
+struct suppl_page_elem
+  {
+    void *upage;
+    void *kpage;
+    bool writable;
+    struct list_elem elem;
+  };
+
 static struct list writable_suppl_page_list;
 
 void suppl_page_table_init ()
@@ -45,4 +53,14 @@ struct suppl_page_elem *suppl_page_table_pop_writable (void)
   pagedir_clear_page (t->pagedir, suppl_page_elem->upage);
 
   return suppl_page_elem;
+}
+
+void *suppl_page_elem_get_upage (struct suppl_page_elem *elem)
+{
+  return elem->upage;
+}
+
+void *suppl_page_elem_get_kpage (struct suppl_page_elem *elem)
+{
+  return elem->kpage;
 }
