@@ -25,24 +25,24 @@ bool suppl_page_table_add_page (void *upage, void *kpage, bool writable)
 
   if (writable)
     {
-      struct suppl_page *suppl_page = malloc (sizeof *suppl_page);
-      suppl_page->upage = upage;
-      suppl_page->kpage = kpage;
-      suppl_page->writable = writable;
-      list_push_back (&writable_suppl_page_list, &suppl_page->elem);
+      struct suppl_page_elem *suppl_page_elem = malloc (sizeof *suppl_page_elem);
+      suppl_page_elem->upage = upage;
+      suppl_page_elem->kpage = kpage;
+      suppl_page_elem->writable = writable;
+      list_push_back (&writable_suppl_page_list, &suppl_page_elem->elem);
     }
 
   return true;
 }
 
-struct suppl_page *suppl_page_table_pop_writable (void)
+struct suppl_page_elem *suppl_page_table_pop_writable (void)
 {
   if (list_empty (&writable_suppl_page_list))
     return NULL;
 
   struct thread *t = thread_current ();
-  struct suppl_page *suppl_page = list_entry (list_pop_front (&writable_suppl_page_list), struct suppl_page, elem);
-  pagedir_clear_page (t->pagedir, suppl_page->upage);
+  struct suppl_page_elem *suppl_page_elem = list_entry (list_pop_front (&writable_suppl_page_list), struct suppl_page_elem, elem);
+  pagedir_clear_page (t->pagedir, suppl_page_elem->upage);
 
-  return suppl_page;
+  return suppl_page_elem;
 }
