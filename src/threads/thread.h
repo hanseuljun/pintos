@@ -32,7 +32,10 @@ struct thread_exit_info
     struct list_elem elem;
   };
 
+#ifdef VM
 struct suppl_page_table;
+struct swap_table;
+#endif
 
 /* A kernel thread or user process.
 
@@ -115,6 +118,7 @@ struct thread
 #endif
 #ifdef VM
     struct suppl_page_table *suppl_page_table;
+    struct swap_table *swap_table;
 #endif
     struct file *file;                  /* Prevents writing to this file. */
 

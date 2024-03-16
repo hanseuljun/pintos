@@ -4,11 +4,15 @@
 #include "threads/malloc.h"
 #include "threads/vaddr.h"
 
+struct swap_table
+  {
+    struct hash swap_hash;
+  };
+
 /* SECTOR_GROUP_SIZE is 8 (=4096 / 512). It incidates how many
    block sectors are needed to save a page. */
 #define SECTOR_GROUP_SIZE (PGSIZE / BLOCK_SECTOR_SIZE)
 
-static struct hash swap_hash;
 static struct bitmap *sector_group_occupancy;
 
 struct swap_table_elem
@@ -36,13 +40,18 @@ static bool swap_table_less_func (const struct hash_elem *a,
 
 void swap_table_init (void)
 {
-  hash_init (&swap_hash, &swap_table_hash_func, &swap_table_less_func, NULL);
-
   struct block *swap_block = block_get_role (BLOCK_SWAP);
   sector_group_occupancy = bitmap_create (block_size (swap_block) / SECTOR_GROUP_SIZE);
 }
 
-void swap_table_insert_and_save (void *upage, void *kpage, bool writable)
+struct swap_table *swap_table_create (void)
+{
+  struct swap_table *swap_table = malloc (sizeof *swap_table);
+  hash_init (&swap_table->swap_hash, &swap_table_hash_func, &swap_table_less_func, NULL);
+  return swap_table;
+}
+
+void swap_table_insert_and_save (struct swap_table *swap_table, void *upage, void *kpage, bool writable)
 {
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (pg_ofs (kpage) == 0);
@@ -55,7 +64,7 @@ void swap_table_insert_and_save (void *upage, void *kpage, bool writable)
   elem->upage = upage;
   elem->writable = writable;
   elem->sector_group = sector_group;
-  hash_insert (&swap_hash, &elem->hash_elem);
+  hash_insert (&swap_table->swap_hash, &elem->hash_elem);
 
 
   block_sector_t sector = sector_group * SECTOR_GROUP_SIZE;
@@ -69,7 +78,7 @@ void swap_table_insert_and_save (void *upage, void *kpage, bool writable)
     }
 }
 
-void swap_table_load_and_remove (struct swap_table_elem *swap_table_elem, void *kpage)
+void swap_table_load_and_remove (struct swap_table *swap_table, struct swap_table_elem *swap_table_elem, void *kpage)
 {
   ASSERT (pg_ofs (kpage) == 0);
 
@@ -87,17 +96,17 @@ void swap_table_load_and_remove (struct swap_table_elem *swap_table_elem, void *
 
   bitmap_set (sector_group_occupancy, swap_table_elem->sector_group, false);
 
-  ASSERT (hash_delete (&swap_hash, &swap_table_elem->hash_elem) != NULL);
+  ASSERT (hash_delete (&swap_table->swap_hash, &swap_table_elem->hash_elem) != NULL);
 }
 
-struct swap_table_elem *swap_table_find (void *upage)
+struct swap_table_elem *swap_table_find (struct swap_table *swap_table, void *upage)
 {
   ASSERT (pg_ofs (upage) == 0);
   
   struct swap_table_elem elem_for_find;
   elem_for_find.upage = upage;
 
-  struct hash_elem *hash_elem = hash_find (&swap_hash, &elem_for_find.hash_elem);
+  struct hash_elem *hash_elem = hash_find (&swap_table->swap_hash, &elem_for_find.hash_elem);
   if (hash_elem == NULL)
     return NULL;
 

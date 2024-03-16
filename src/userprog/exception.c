@@ -168,8 +168,10 @@ page_fault (struct intr_frame *f)
   //         write ? "writing" : "reading",
   //         user ? "user" : "kernel");
 
+  struct thread *t = thread_current ();
+
   /* Swap in the page if the page exists in the swap table. */
-  if (swap_table_find (pg_round_down (fault_addr)) != NULL)
+  if (swap_table_find (t->swap_table, pg_round_down (fault_addr)) != NULL)
     {
       frame_table_reinstall (pg_round_down (fault_addr));
       return;
@@ -189,12 +191,11 @@ page_fault (struct intr_frame *f)
   && ((uint8_t *) fault_addr) >= ((uint8_t *) f->esp - 32))
     {
       /* Install all pages from PHYS_BASE down to fault_addr. */
-      uint32_t *pd = thread_current ()->pagedir;
       for (uint8_t *upage = PHYS_BASE - PGSIZE; upage >= (uint8_t *) pg_round_down (fault_addr); upage -= PGSIZE)
         {
-          if (pagedir_get_page (pd, upage) != NULL)
+          if (pagedir_get_page (t->pagedir, upage) != NULL)
             continue;
-          if (swap_table_find (upage) != NULL)
+          if (swap_table_find (t->swap_table, upage) != NULL)
             continue;
           frame_table_install (upage, true);
         }

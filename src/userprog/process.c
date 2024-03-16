@@ -23,6 +23,7 @@
 #ifdef VM
 #include "vm/frame_table.h"
 #include "vm/suppl_page_table.h"
+#include "vm/swap_table.h"
 #endif
 
 #define MAX_THREAD_NAME_LENGTH 128
@@ -339,6 +340,11 @@ load (const char *cmdline, void (**eip) (void), void **esp)
     goto done;
 #ifdef VM
   t->suppl_page_table = suppl_page_table_create ();
+  if (t->suppl_page_table == NULL)
+    goto done;
+  t->swap_table = swap_table_create ();
+  if (t->swap_table == NULL)
+    goto done;
 #endif
   process_activate ();
 
