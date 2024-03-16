@@ -335,8 +335,11 @@ load (const char *cmdline, void (**eip) (void), void **esp)
 
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
-  if (t->pagedir == NULL) 
+  if (t->pagedir == NULL)
     goto done;
+#ifdef VM
+  t->suppl_page_table = suppl_page_table_create ();
+#endif
   process_activate ();
 
   /* First token contains the file name. */

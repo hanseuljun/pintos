@@ -32,6 +32,8 @@ struct thread_exit_info
     struct list_elem elem;
   };
 
+struct suppl_page_table;
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -110,6 +112,9 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+#endif
+#ifdef VM
+    struct suppl_page_table *suppl_page_table;
 #endif
     struct file *file;                  /* Prevents writing to this file. */
 

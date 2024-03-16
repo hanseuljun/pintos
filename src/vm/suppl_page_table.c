@@ -5,6 +5,11 @@
 #include "threads/thread.h"
 #include "userprog/pagedir.h"
 
+struct suppl_page_table
+  {
+    struct list writable_suppl_page_list;
+  };
+
 struct suppl_page_elem
   {
     void *upage;
@@ -13,14 +18,14 @@ struct suppl_page_elem
     struct list_elem elem;
   };
 
-static struct list writable_suppl_page_list;
-
-void suppl_page_table_init ()
+struct suppl_page_table *suppl_page_table_create ()
 {
-  list_init (&writable_suppl_page_list);
+  struct suppl_page_table *spt = malloc (sizeof *spt);
+  list_init (&spt->writable_suppl_page_list);
+  return spt;
 }
 
-bool suppl_page_table_add_page (void *upage, void *kpage, bool writable)
+bool suppl_page_table_add_page (struct suppl_page_table *suppl_page_table, void *upage, void *kpage, bool writable)
 {
   struct thread *t = thread_current ();
 
@@ -37,19 +42,21 @@ bool suppl_page_table_add_page (void *upage, void *kpage, bool writable)
       suppl_page_elem->upage = upage;
       suppl_page_elem->kpage = kpage;
       suppl_page_elem->writable = writable;
-      list_push_back (&writable_suppl_page_list, &suppl_page_elem->elem);
+      list_push_back (&suppl_page_table->writable_suppl_page_list, &suppl_page_elem->elem);
     }
 
   return true;
 }
 
-struct suppl_page_elem *suppl_page_table_pop_writable (void)
+struct suppl_page_elem *suppl_page_table_pop_writable (struct suppl_page_table *suppl_page_table)
 {
-  if (list_empty (&writable_suppl_page_list))
+  if (list_empty (&suppl_page_table->writable_suppl_page_list))
     return NULL;
 
   struct thread *t = thread_current ();
-  struct suppl_page_elem *suppl_page_elem = list_entry (list_pop_front (&writable_suppl_page_list), struct suppl_page_elem, elem);
+  struct suppl_page_elem *suppl_page_elem = list_entry (list_pop_front (&suppl_page_table->writable_suppl_page_list),
+                                                        struct suppl_page_elem,
+                                                        elem);
   pagedir_clear_page (t->pagedir, suppl_page_elem->upage);
 
   return suppl_page_elem;

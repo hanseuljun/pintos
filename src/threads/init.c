@@ -132,7 +132,6 @@ main (void)
 #endif
 
 #ifdef VM
-  suppl_page_table_init ();
   swap_table_init ();
 #endif
 
