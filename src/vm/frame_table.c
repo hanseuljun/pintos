@@ -14,6 +14,9 @@ void *frame_table_install (void *upage, bool writable)
   void *kpage = palloc_get_page (PAL_USER);
   if (kpage == NULL)
     {
+      // TODO: I don't think it is safe to allow interruptions during
+      // swapping. Find a way to swap without interruptions or
+      // prove why it is okay to swap with interruptions.
       // enum intr_level old_level;
       // old_level = intr_disable ();
 
@@ -24,7 +27,8 @@ void *frame_table_install (void *upage, bool writable)
 
       // TODO: Make suppl_page_table_pop_writable work with multiple processes running.
 
-      swap_table_insert_and_save (suppl_page_elem_get_upage (suppl_page_elem),
+      swap_table_insert_and_save (suppl_page_elem_get_tid (suppl_page_elem),
+                                  suppl_page_elem_get_upage (suppl_page_elem),
                                   suppl_page_elem_get_kpage (suppl_page_elem),
                                   suppl_page_elem_get_writable(suppl_page_elem));
       palloc_free_page (suppl_page_elem_get_kpage (suppl_page_elem));

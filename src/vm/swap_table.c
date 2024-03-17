@@ -13,6 +13,7 @@ static struct bitmap *sector_group_occupancy;
 
 struct swap_table_elem
   {
+    tid_t tid;
     void *upage;
     bool writable;
     uint32_t sector_group;
@@ -42,7 +43,7 @@ void swap_table_init (void)
   sector_group_occupancy = bitmap_create (block_size (swap_block) / SECTOR_GROUP_SIZE);
 }
 
-void swap_table_insert_and_save (void *upage, void *kpage, bool writable)
+void swap_table_insert_and_save (tid_t tid, void *upage, void *kpage, bool writable)
 {
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (pg_ofs (kpage) == 0);
@@ -52,11 +53,11 @@ void swap_table_insert_and_save (void *upage, void *kpage, bool writable)
   bitmap_set (sector_group_occupancy, sector_group, true);
 
   struct swap_table_elem *elem = malloc (sizeof *elem);
+  elem->tid = tid;
   elem->upage = upage;
   elem->writable = writable;
   elem->sector_group = sector_group;
   hash_insert (&swap_hash, &elem->hash_elem);
-
 
   block_sector_t sector = sector_group * SECTOR_GROUP_SIZE;
   uint8_t *buffer = kpage;
