@@ -7,6 +7,7 @@
 
 struct suppl_page_elem
   {
+    tid_t tid;
     void *upage;
     void *kpage;
     bool writable;
@@ -34,6 +35,7 @@ bool suppl_page_table_add_page (void *upage, void *kpage, bool writable)
   if (writable)
     {
       struct suppl_page_elem *suppl_page_elem = malloc (sizeof *suppl_page_elem);
+      suppl_page_elem->tid = t->tid;
       suppl_page_elem->upage = upage;
       suppl_page_elem->kpage = kpage;
       suppl_page_elem->writable = writable;
@@ -55,6 +57,11 @@ struct suppl_page_elem *suppl_page_table_pop_writable (void)
   return suppl_page_elem;
 }
 
+tid_t suppl_page_elem_get_tid (struct suppl_page_elem *elem)
+{
+  return elem->tid;
+}
+
 void *suppl_page_elem_get_upage (struct suppl_page_elem *elem)
 {
   return elem->upage;
@@ -63,4 +70,9 @@ void *suppl_page_elem_get_upage (struct suppl_page_elem *elem)
 void *suppl_page_elem_get_kpage (struct suppl_page_elem *elem)
 {
   return elem->kpage;
+}
+
+bool suppl_page_elem_get_writable (struct suppl_page_elem *elem)
+{
+  return elem->writable;
 }

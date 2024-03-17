@@ -21,9 +21,12 @@ void *frame_table_install (void *upage, bool writable)
       // "Interrupt 0x03 (#BP Breakpoint Exception)" described in E.8 Tips.
       // So, only swapping writable pages, at least for now.
       struct suppl_page_elem *suppl_page_elem = suppl_page_table_pop_writable ();
+
+      // TODO: Make suppl_page_table_pop_writable work with multiple processes running.
+
       swap_table_insert_and_save (suppl_page_elem_get_upage (suppl_page_elem),
                                   suppl_page_elem_get_kpage (suppl_page_elem),
-                                  writable);
+                                  suppl_page_elem_get_writable(suppl_page_elem));
       palloc_free_page (suppl_page_elem_get_kpage (suppl_page_elem));
 
       /* Try again as one of the pages has been swapped. */
