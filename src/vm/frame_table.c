@@ -48,7 +48,7 @@ void *frame_table_reinstall (void *upage)
 {
   ASSERT (pg_ofs (upage) == 0);
 
-  struct swap_table_elem *swap_table_elem = swap_table_find (upage);
+  struct swap_table_elem *swap_table_elem = swap_table_find (thread_tid (), upage);
   ASSERT (swap_table_elem != NULL);
 
   void *kpage = frame_table_install (upage, swap_table_elem_is_writable (swap_table_elem));

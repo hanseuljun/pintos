@@ -23,7 +23,7 @@ struct swap_table_elem
 static unsigned swap_table_hash_func (const struct hash_elem *e, void *aux UNUSED)
 {
   struct swap_table_elem *elem = hash_entry (e, struct swap_table_elem, hash_elem);
-  return (unsigned) elem->upage;
+  return elem->tid + (unsigned) elem->upage;
 }
 
 static bool swap_table_less_func (const struct hash_elem *a,
@@ -32,6 +32,10 @@ static bool swap_table_less_func (const struct hash_elem *a,
 {
   struct swap_table_elem *elem_a = hash_entry (a, struct swap_table_elem, hash_elem);
   struct swap_table_elem *elem_b = hash_entry (b, struct swap_table_elem, hash_elem);
+  if (elem_a->tid < elem_b->tid)
+    return true;
+  if (elem_a->tid > elem_b->tid)
+    return false;
   return elem_a->upage < elem_b->upage;
 }
 
@@ -91,11 +95,12 @@ void swap_table_load_and_remove (struct swap_table_elem *swap_table_elem, void *
   ASSERT (hash_delete (&swap_hash, &swap_table_elem->hash_elem) != NULL);
 }
 
-struct swap_table_elem *swap_table_find (void *upage)
+struct swap_table_elem *swap_table_find (tid_t tid, void *upage)
 {
   ASSERT (pg_ofs (upage) == 0);
   
   struct swap_table_elem elem_for_find;
+  elem_for_find.tid = tid;
   elem_for_find.upage = upage;
 
   struct hash_elem *hash_elem = hash_find (&swap_hash, &elem_for_find.hash_elem);
