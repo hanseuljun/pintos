@@ -7,6 +7,7 @@
 #include "tests/arc4.h"
 #include "tests/lib.h"
 #include "tests/main.h"
+#include <stdio.h>
 
 /* This is the max file size for an older version of the Pintos
    file system that had 126 direct blocks each pointing to a
@@ -64,6 +65,15 @@ sort_chunks (void)
       read (handle, buf1 + CHUNK_SIZE * i, CHUNK_SIZE);
       close (handle);
 
+      unsigned char prev = 0;
+      for (size_t j = 0; j < CHUNK_SIZE; ++j) {
+        unsigned char val = buf1[CHUNK_SIZE * i + j];
+        if (val < prev) {
+          printf ("sort_chunks failed, chunk: %ld, index: %ld, prev: %d, val: %dn", i, j, prev, val);
+        }
+        prev = val;
+      }
+
       quiet = false;
     }
 }
@@ -78,6 +88,20 @@ merge (void)
   size_t i;
 
   msg ("merge");
+
+  for (i = 0; i < CHUNK_CNT; i++) {
+    printf ("check chunk %ld\n", i);
+    unsigned char prev = 0;
+    for (size_t j = 0; j < CHUNK_SIZE; ++j) {
+      unsigned char val = buf1[CHUNK_SIZE * i + j];
+      if (val < prev) {
+        printf ("merge chunk failed, chunk: %ld, index: %ld, val: %d, prev: %d\n", val, prev, i, j);
+      } else if (val > prev) {
+        // printf ("bump found: %d\n", val);
+      }
+      prev = val;
+    }
+  }
 
   /* Initialize merge pointers. */
   mp_left = CHUNK_CNT;
@@ -102,6 +126,20 @@ merge (void)
       if ((++mp[min] - buf1) % CHUNK_SIZE == 0)
         mp[min] = mp[--mp_left]; 
     }
+
+
+  unsigned char prev = 0;
+  printf ("check buf2\n");
+  printf ("buf2[0]: %d\n", buf2[0]);
+  for (size_t j = 0; j < DATA_SIZE; ++j) {
+    unsigned char val = buf2[j];
+    if (val < prev) {
+      printf ("sort failed, val: %d, prev: %d, j: %d\n", val, prev, j);
+    } else if (val > prev) {
+      printf ("bump found: %d\n", val);
+    }
+    prev = val;
+  }
 }
 
 static void
@@ -116,8 +154,12 @@ verify (void)
   for (hist_idx = 0; hist_idx < sizeof histogram / sizeof *histogram;
        hist_idx++)
     {
+      printf ("hist_idx: %d\n", hist_idx);
+      printf ("histogram[hist_idx]: %d\n", histogram[hist_idx]);
+      printf ("sizeof histogram / sizeof *histogram: %d\n", sizeof histogram / sizeof *histogram);
       while (histogram[hist_idx]-- > 0) 
         {
+          // printf ("buf_idx: %d\n", buf_idx);
           if (buf2[buf_idx] != hist_idx)
             fail ("bad value %d in byte %zu", buf2[buf_idx], buf_idx);
           buf_idx++;
