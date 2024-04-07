@@ -33,7 +33,7 @@ void *frame_table_install (void *upage, bool writable)
 
 void *frame_table_reinstall (void *upage)
 {
-  printf ("frame_table_reinstall, upage: %p\n", upage);
+  printf ("frame_table_reinstall, tid: %d, upage: %p\n", thread_current ()->tid, upage);
   ASSERT (pg_ofs (upage) == 0);
 
   lock_acquire (&frame_table_lock);
@@ -50,9 +50,13 @@ void *frame_table_reinstall (void *upage)
   return kpage;
 }
 
+void frame_table_exit_thread (void)
+{
+  suppl_page_table_exit_thread ();
+}
+
 void *install_frame_table (void *upage, bool writable)
 {
-  // printf ("install_frame_table tid: %d, upage: %p\n", thread_current ()->tid, upage);
   ASSERT (pg_ofs (upage) == 0);
 
   void *kpage = palloc_get_page (PAL_USER);

@@ -8,6 +8,7 @@ struct suppl_page_elem;
 void suppl_page_table_init (void);
 bool suppl_page_table_add_page (void *upage, void *kpage, bool writable);
 struct suppl_page_elem *suppl_page_table_pop_writable (void);
+void suppl_page_table_exit_thread (void);
 void suppl_page_table_print (void);
 
 tid_t suppl_page_elem_get_tid (struct suppl_page_elem *);

@@ -364,6 +364,10 @@ thread_exit (void)
       free (exit_info);
     }
 
+#ifdef VM
+  frame_table_exit_thread ();
+#endif
+
 #ifdef USERPROG
   process_exit ();
 #endif

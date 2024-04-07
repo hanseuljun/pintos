@@ -50,22 +50,47 @@ struct suppl_page_elem *suppl_page_table_pop_writable (void)
   if (list_empty (&writable_suppl_page_list))
     return NULL;
 
+  printf ("suppl_page_table_pop_writable list_size1: %ld\n", list_size (&writable_suppl_page_list));
+
   struct thread *t = thread_current ();
   struct suppl_page_elem *suppl_page_elem = list_entry (list_pop_front (&writable_suppl_page_list), struct suppl_page_elem, elem);
   pagedir_clear_page (t->pagedir, suppl_page_elem->upage);
 
+  printf ("suppl_page_table_pop_writable list_size2: %ld\n", list_size (&writable_suppl_page_list));
+
   return suppl_page_elem;
+}
+
+void suppl_page_table_exit_thread (void)
+{
+  struct thread *t = thread_current ();
+  struct list_elem *e;
+
+  e = list_begin (&writable_suppl_page_list);
+  while (e != list_end (&writable_suppl_page_list))
+    {
+      struct suppl_page_elem *suppl_page_elem = list_entry (e, struct suppl_page_elem, elem);
+      if (t->tid == suppl_page_elem->tid)
+        {
+          e = list_remove (e);
+        }
+      else
+        {
+          e = list_next (e);
+        }
+    }
 }
 
 void suppl_page_table_print (void)
 {
   struct list_elem *e;
 
+  printf ("writable_suppl_page_list (size: %ld)\n", list_size (&writable_suppl_page_list));
   for (e = list_begin (&writable_suppl_page_list); e != list_end (&writable_suppl_page_list);
        e = list_next (e))
     {
       struct suppl_page_elem *suppl_page_elem = list_entry (e, struct suppl_page_elem, elem);
-      printf ("suppl_page_elem tid: %d, upage: %p, kpage: %p\n",
+      printf ("  - tid: %d, upage: %p, kpage: %p\n",
               suppl_page_elem->tid,
               suppl_page_elem->upage,
               suppl_page_elem->kpage);
