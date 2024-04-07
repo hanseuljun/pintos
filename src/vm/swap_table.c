@@ -111,6 +111,22 @@ struct swap_table_elem *swap_table_find (tid_t tid, void *upage)
   return elem;
 }
 
+void swap_table_print (void)
+{
+  struct hash_iterator i;
+
+  printf ("swap_hash (size: %ld)\n", hash_size (&swap_hash));
+  hash_first (&i, &swap_hash);
+  while (hash_next (&i))
+    {
+      struct swap_table_elem *swap_table_elem = hash_entry (hash_cur (&i), struct swap_table_elem, hash_elem);
+      printf ("  - tid: %d, upage: %p, sector_group: %d\n",
+              swap_table_elem->tid,
+              swap_table_elem->upage,
+              swap_table_elem->sector_group);
+    }
+}
+
 bool swap_table_elem_is_writable (struct swap_table_elem *swap_table_elem)
 {
   return swap_table_elem->writable;

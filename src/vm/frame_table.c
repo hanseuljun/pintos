@@ -28,12 +28,13 @@ void *frame_table_install (void *upage, bool writable)
   void *kpage = install_frame_table (upage, writable);
   lock_release (&frame_table_lock);
 
+  printf ("frame_table_install, tid: %d, upage: %p, kpage: %p, writable: %d\n", thread_current ()->tid, upage, kpage, writable);
+
   return kpage;
 }
 
 void *frame_table_reinstall (void *upage)
 {
-  printf ("frame_table_reinstall, tid: %d, upage: %p\n", thread_current ()->tid, upage);
   ASSERT (pg_ofs (upage) == 0);
 
   lock_acquire (&frame_table_lock);
@@ -41,11 +42,17 @@ void *frame_table_reinstall (void *upage)
   ASSERT (swap_table_elem != NULL);
 
   void *kpage = install_frame_table (upage, swap_table_elem_is_writable (swap_table_elem));
+  // swap_table_load_and_remove (swap_table_elem, kpage);
   swap_table_load_and_remove (swap_table_elem, kpage);
   lock_release (&frame_table_lock);
 
+  printf ("frame_table_reinstall, tid: %d, upage: %p, kpage: %p\n", thread_current ()->tid, upage, kpage);
+
   if (upage == 0x8148000)
-    suppl_page_table_print ();
+    {
+      suppl_page_table_print ();
+      swap_table_print ();
+    }
 
   return kpage;
 }
@@ -75,7 +82,10 @@ void *install_frame_table (void *upage, bool writable)
 
       // TODO: Make suppl_page_table_pop_writable work with multiple processes running.
 
-      // printf ("suppl_page_elem uninstall tid: %d, upage: %p\n", suppl_page_elem_get_tid (suppl_page_elem), suppl_page_elem_get_upage (suppl_page_elem));
+      printf ("suppl_page_elem uninstall tid: %d, upage: %p, kpage: %p\n",
+              suppl_page_elem_get_tid (suppl_page_elem),
+              suppl_page_elem_get_upage (suppl_page_elem),
+              suppl_page_elem_get_kpage (suppl_page_elem));
 
       swap_table_insert_and_save (suppl_page_elem_get_tid (suppl_page_elem),
                                   suppl_page_elem_get_upage (suppl_page_elem),

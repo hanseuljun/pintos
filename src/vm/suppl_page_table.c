@@ -1,5 +1,6 @@
 #include "suppl_page_table.h"
 #include <stdio.h>
+#include "threads/interrupt.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
@@ -50,13 +51,15 @@ struct suppl_page_elem *suppl_page_table_pop_writable (void)
   if (list_empty (&writable_suppl_page_list))
     return NULL;
 
-  printf ("suppl_page_table_pop_writable list_size1: %ld\n", list_size (&writable_suppl_page_list));
-
-  struct thread *t = thread_current ();
   struct suppl_page_elem *suppl_page_elem = list_entry (list_pop_front (&writable_suppl_page_list), struct suppl_page_elem, elem);
-  pagedir_clear_page (t->pagedir, suppl_page_elem->upage);
 
-  printf ("suppl_page_table_pop_writable list_size2: %ld\n", list_size (&writable_suppl_page_list));
+  enum intr_level old_level;
+  old_level = intr_disable ();
+  struct thread *t = thread_find (suppl_page_elem->tid);
+  intr_set_level (old_level);
+
+  ASSERT (t != NULL);
+  pagedir_clear_page (t->pagedir, suppl_page_elem->upage);
 
   return suppl_page_elem;
 }

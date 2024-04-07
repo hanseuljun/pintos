@@ -100,6 +100,7 @@ merge (void)
       prev = val;
     }
   }
+  printf ("buf1: %p, buf2: %p\n", buf1, buf2);
 
   /* Initialize merge pointers. */
   mp_left = CHUNK_CNT;
@@ -126,13 +127,13 @@ merge (void)
     }
 
   unsigned char prev = 0;
-  printf ("check buf2\n");
+  printf ("check buf2 (%p)\n", buf2);
   for (size_t j = 0; j < DATA_SIZE; ++j) {
     unsigned char val = buf2[j];
     if (val < prev) {
-      printf ("merge failed, index: %ld, val: %d, prev: %d\n", j, val, prev);
+      printf ("merge failed, address: %p, index: %ld, val: %d, prev: %d\n", &buf2[j], j, val, prev);
     } else if (val > prev) {
-      printf ("bump found: index: %ld, val: %d, prev: %d\n", j, val, prev);
+      printf ("bump found: address: %p, index: %ld, val: %d, prev: %d\n", &buf2[j], j, val, prev);
     }
     prev = val;
   }

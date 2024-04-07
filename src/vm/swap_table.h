@@ -12,6 +12,7 @@ void swap_table_insert_and_save (tid_t tid, void *upage, void *kpage, bool writa
 void swap_table_load_and_remove (struct swap_table_elem *swap_table_elem, void *kpage);
 /* Returns a null pointer when not found. */
 struct swap_table_elem *swap_table_find (tid_t tid, void *upage);
+void swap_table_print (void);
 
 bool swap_table_elem_is_writable (struct swap_table_elem *swap_table_elem);
 
