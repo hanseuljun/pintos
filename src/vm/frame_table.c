@@ -33,6 +33,7 @@ void *frame_table_install (void *upage, bool writable)
 
 void *frame_table_reinstall (void *upage)
 {
+  printf ("frame_table_reinstall, upage: %p\n", upage);
   ASSERT (pg_ofs (upage) == 0);
 
   lock_acquire (&frame_table_lock);
@@ -42,6 +43,9 @@ void *frame_table_reinstall (void *upage)
   void *kpage = install_frame_table (upage, swap_table_elem_is_writable (swap_table_elem));
   swap_table_load_and_remove (swap_table_elem, kpage);
   lock_release (&frame_table_lock);
+
+  if (upage == 0x8148000)
+    suppl_page_table_print ();
 
   return kpage;
 }

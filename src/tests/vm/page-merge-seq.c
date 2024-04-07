@@ -95,9 +95,7 @@ merge (void)
     for (size_t j = 0; j < CHUNK_SIZE; ++j) {
       unsigned char val = buf1[CHUNK_SIZE * i + j];
       if (val < prev) {
-        printf ("merge chunk failed, chunk: %ld, index: %ld, val: %d, prev: %d\n", val, prev, i, j);
-      } else if (val > prev) {
-        // printf ("bump found: %d\n", val);
+        printf ("merge chunk failed, chunk: %ld, index: %ld, val: %d, prev: %d\n", i, j, val, prev);
       }
       prev = val;
     }
@@ -127,16 +125,14 @@ merge (void)
         mp[min] = mp[--mp_left]; 
     }
 
-
   unsigned char prev = 0;
   printf ("check buf2\n");
-  printf ("buf2[0]: %d\n", buf2[0]);
   for (size_t j = 0; j < DATA_SIZE; ++j) {
     unsigned char val = buf2[j];
     if (val < prev) {
-      printf ("sort failed, val: %d, prev: %d, j: %d\n", val, prev, j);
+      printf ("merge failed, index: %ld, val: %d, prev: %d\n", j, val, prev);
     } else if (val > prev) {
-      printf ("bump found: %d\n", val);
+      printf ("bump found: index: %ld, val: %d, prev: %d\n", j, val, prev);
     }
     prev = val;
   }
@@ -154,9 +150,9 @@ verify (void)
   for (hist_idx = 0; hist_idx < sizeof histogram / sizeof *histogram;
        hist_idx++)
     {
-      printf ("hist_idx: %d\n", hist_idx);
-      printf ("histogram[hist_idx]: %d\n", histogram[hist_idx]);
-      printf ("sizeof histogram / sizeof *histogram: %d\n", sizeof histogram / sizeof *histogram);
+      // printf ("hist_idx: %d\n", hist_idx);
+      // printf ("histogram[hist_idx]: %d\n", histogram[hist_idx]);
+      // printf ("sizeof histogram / sizeof *histogram: %d\n", sizeof histogram / sizeof *histogram);
       while (histogram[hist_idx]-- > 0) 
         {
           // printf ("buf_idx: %d\n", buf_idx);

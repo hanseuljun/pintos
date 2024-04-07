@@ -57,6 +57,21 @@ struct suppl_page_elem *suppl_page_table_pop_writable (void)
   return suppl_page_elem;
 }
 
+void suppl_page_table_print (void)
+{
+  struct list_elem *e;
+
+  for (e = list_begin (&writable_suppl_page_list); e != list_end (&writable_suppl_page_list);
+       e = list_next (e))
+    {
+      struct suppl_page_elem *suppl_page_elem = list_entry (e, struct suppl_page_elem, elem);
+      printf ("suppl_page_elem tid: %d, upage: %p, kpage: %p\n",
+              suppl_page_elem->tid,
+              suppl_page_elem->upage,
+              suppl_page_elem->kpage);
+    }
+}
+
 tid_t suppl_page_elem_get_tid (struct suppl_page_elem *elem)
 {
   return elem->tid;
