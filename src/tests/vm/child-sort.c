@@ -30,24 +30,12 @@ main (int argc UNUSED, char *argv[])
   for (i = 0; i < sizeof histogram / sizeof *histogram; i++) 
     {
       size_t j = histogram[i];
-      // printf ("histogram[%d]: %ld\n", i, j);
       while (j-- > 0)
         *p++ = i;
     }
   seek (handle, 0);
   write (handle, buf, size);
   close (handle);
-
-  unsigned char prev = 0;
-  for (size_t j = 0; j < size; ++j) {
-    unsigned char val = buf[j];
-    if (val < prev) {
-      // printf ("child-sort failed, val: %d, prev: %d, j: %d, buf: %p, buf[j]: %p\n", val, prev, j, buf, &buf[j]);
-    } else if (val > prev) {
-      // printf ("child-sort bump found: %d, prev: %d\n", val, prev);
-    }
-    prev = val;
-  }
   
   return 123;
 }
