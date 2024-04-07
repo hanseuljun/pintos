@@ -11,6 +11,9 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#ifdef VM
+#include "vm/mmap_table.h"
+#endif
 
 #define FD_INFO_MAP_SIZE 128
 /* Should not use numbers assigned to STDIN_FILENO (0) or STDOUT_FILENO (1)
@@ -403,7 +406,7 @@ handle_mmap (void *esp)
   int fd = (int) get_argument(esp, 1);
   void *addr = (void *) get_argument(esp, 2);
 
-  return -1;
+  return mmap_table_add (fd, addr);
 }
 
 static uint32_t
