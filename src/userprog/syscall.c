@@ -40,6 +40,7 @@ static int handle_read (void *esp);
 static int handle_write (void *esp);
 static void handle_seek (void *esp);
 static void handle_close (void *esp);
+static int handle_mmap (void *esp);
 static uint32_t get_argument (void *esp, size_t idx);
 static int find_available_fd (void);
 static bool is_uaddr_valid (const void *uaddr);
@@ -145,6 +146,9 @@ syscall_handler (struct intr_frame *f)
         return;
       case SYS_CLOSE:
         handle_close (f->esp);
+        return;
+      case SYS_MMAP:
+        f->eax = handle_mmap (f->esp);
         return;
     }
   
@@ -391,6 +395,15 @@ handle_close (void *esp)
   lock_release (&global_filesys_lock);
   fd_info_map[fd - FD_BASE] = NULL;
   free (fd_info);
+}
+
+static int
+handle_mmap (void *esp)
+{
+  int fd = (int) get_argument(esp, 1);
+  void *addr = (void *) get_argument(esp, 2);
+
+  return -1;
 }
 
 static uint32_t
