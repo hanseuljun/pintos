@@ -19,6 +19,7 @@ static int next_mmap_id;
 static struct list mmap_list;
 
 static struct mmap_elem *mmap_table_find (void *uaddr);
+static struct mmap_elem *mmap_table_update_file (struct mmap_elem *mmap_elem);
 
 void mmap_table_init (void)
 {
@@ -49,6 +50,7 @@ void mmap_table_remove (int mapping)
       if (mmap_elem->id != mapping)
         continue;
 
+      mmap_table_update_file (mmap_elem);
       file_close (mmap_elem->file);
       e = list_remove (e);
       return;
@@ -89,4 +91,13 @@ static struct mmap_elem *mmap_table_find (void *uaddr)
       return mmap_elem;
     }
   return NULL;
+}
+
+struct mmap_elem *mmap_table_update_file (struct mmap_elem *mmap_elem)
+{
+  void *uaddr = mmap_elem->uaddr;
+  for (int offset = 0; offset < mmap_elem->filesize; offset += PGSIZE)
+    {
+      file_write_at (mmap_elem->file, uaddr + offset, PGSIZE, offset);
+    }
 }
