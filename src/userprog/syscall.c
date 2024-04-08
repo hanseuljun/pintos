@@ -428,6 +428,8 @@ handle_mmap (void *esp)
 static void
 handle_munmap (void *esp)
 {
+  int mapping = (int) get_argument(esp, 1);
+  mmap_table_remove (mapping);
 }
 
 static uint32_t

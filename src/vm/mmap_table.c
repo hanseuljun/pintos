@@ -38,6 +38,25 @@ int mmap_table_add (struct file *file, void *uaddr, int filesize)
   return mmap_elem->id;
 }
 
+void mmap_table_remove (int mapping)
+{
+  struct list_elem *e;
+
+  e = list_begin (&mmap_list);
+  while (e != list_end (&mmap_list))
+    {
+      struct mmap_elem *mmap_elem = list_entry (e, struct mmap_elem, elem);
+      if (mmap_elem->id == mapping)
+        {
+          e = list_remove (e);
+        }
+      else
+        {
+          e = list_next (e);
+        }
+    }
+}
+
 bool mmap_table_contains (void *uaddr)
 {
   return mmap_table_find (uaddr) != NULL;
