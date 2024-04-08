@@ -138,6 +138,11 @@ void mmap_table_update_file (struct mmap_elem *mmap_elem)
           else
             continue;
         }
+      /* Use the dirty flag of the page to detect whether page was written by the
+         user program. This works since the dirty flag was set false after the
+         mmap_table_fill() call in page_fault() of exception.c.*/
+      if (!pagedir_is_dirty (pd, uaddr))
+        continue;
 
       file_write_at (mmap_elem->file, uaddr, PGSIZE, offset);
     }

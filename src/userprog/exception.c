@@ -208,6 +208,9 @@ page_fault (struct intr_frame *f)
       uint8_t *upage = pg_round_down (fault_addr);
       frame_table_install (upage, true, true);
       mmap_table_fill (upage);
+      /* Set the dirty flag to false here, so later during munmap,
+         pages that were not written on can be found. */
+      pagedir_set_dirty (thread_current ()->pagedir, upage, false);
       return;
     }
 
