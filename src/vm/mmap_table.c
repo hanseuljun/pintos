@@ -47,7 +47,6 @@ void mmap_table_remove (int mapping)
 {
   struct list_elem *e;
 
-  printf ("mmap_table_remove - 1\n");
   e = list_begin (&mmap_list);
   while (e != list_end (&mmap_list))
     {
@@ -60,7 +59,6 @@ void mmap_table_remove (int mapping)
       e = list_remove (e);
       return;
     }
-  printf ("mmap_table_remove - 2\n");
 
   NOT_REACHED ();
 }
