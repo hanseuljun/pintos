@@ -46,9 +46,8 @@ int mmap_table_add (struct file *file, void *uaddr, int filesize)
 void mmap_table_remove (int mapping)
 {
   struct list_elem *e;
-
-  e = list_begin (&mmap_list);
-  while (e != list_end (&mmap_list))
+  for (e = list_begin (&mmap_list); e != list_end (&mmap_list);
+       e = list_next (e)) 
     {
       struct mmap_elem *mmap_elem = list_entry (e, struct mmap_elem, elem);
       if (mmap_elem->id != mapping)
@@ -56,7 +55,7 @@ void mmap_table_remove (int mapping)
 
       mmap_table_update_file (mmap_elem);
       file_close (mmap_elem->file);
-      e = list_remove (e);
+      list_remove (e);
       return;
     }
 
@@ -75,6 +74,24 @@ void mmap_table_fill (void *uaddr)
 
   uint8_t *upage = pg_round_down (uaddr);
   file_read_at (mmap_elem->file, upage, PGSIZE, upage - (uint8_t *) mmap_elem->uaddr);
+}
+
+void mmap_table_exit_thread (void)
+{
+  tid_t tid = thread_current ()->tid;
+  struct list_elem *e = list_begin (&mmap_list);
+  while (e != list_end (&mmap_list)) 
+    {
+      struct mmap_elem *mmap_elem = list_entry (e, struct mmap_elem, elem);
+      if (mmap_elem->tid == tid)
+      {
+        mmap_table_update_file (mmap_elem);
+        file_close (mmap_elem->file);
+        e = list_remove (e);
+      }
+      else
+        list_next (e);
+    }
 }
 
 static struct mmap_elem *mmap_table_find (void *uaddr)

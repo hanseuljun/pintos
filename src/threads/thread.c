@@ -18,6 +18,7 @@
 #endif
 #ifdef VM
 #include "vm/frame_table.h"
+#include "vm/mmap_table.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -369,6 +370,7 @@ thread_exit (void)
 
 #ifdef VM
   frame_table_exit_thread ();
+  mmap_table_exit_thread ();
 #endif
 
 #ifdef USERPROG
