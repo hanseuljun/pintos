@@ -76,8 +76,8 @@ static struct mmap_elem *mmap_table_find (void *uaddr)
   struct thread *t = thread_current ();
   struct list_elem *e;
 
-  e = list_begin (&mmap_list);
-  while (e != list_end (&mmap_list))
+  for (e = list_begin (&mmap_list); e != list_end (&mmap_list);
+       e = list_next (e))
     {
       struct mmap_elem *mmap_elem = list_entry (e, struct mmap_elem, elem);
       if (t->tid != mmap_elem->tid)
