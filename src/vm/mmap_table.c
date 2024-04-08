@@ -30,7 +30,7 @@ int mmap_table_add (struct file *file, void *uaddr, int filesize)
 {
   struct mmap_elem *mmap_elem = malloc (sizeof *mmap_elem);
   mmap_elem->id = next_mmap_id++;
-  mmap_elem->file = file;
+  mmap_elem->file = file_reopen (file);
   mmap_elem->tid = thread_current ()->tid;
   mmap_elem->uaddr = uaddr;
   mmap_elem->filesize = filesize;
@@ -48,6 +48,7 @@ void mmap_table_remove (int mapping)
       struct mmap_elem *mmap_elem = list_entry (e, struct mmap_elem, elem);
       if (mmap_elem->id == mapping)
         {
+          file_close (mmap_elem->file);
           e = list_remove (e);
         }
       else
