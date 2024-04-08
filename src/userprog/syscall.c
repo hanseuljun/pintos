@@ -410,6 +410,13 @@ handle_mmap (void *esp)
   int fd = (int) get_argument(esp, 1);
   void *addr = (void *) get_argument(esp, 2);
 
+  if (pg_ofs (addr) != 0)
+    return -1;
+  if (addr == NULL)
+    return -1;
+  if (!is_fd_for_file (fd))
+    return -1;
+
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
   lock_acquire (&global_filesys_lock);
   int filesize = file_length (fd_info->file);
