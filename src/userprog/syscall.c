@@ -44,6 +44,7 @@ static int handle_write (void *esp);
 static void handle_seek (void *esp);
 static void handle_close (void *esp);
 static int handle_mmap (void *esp);
+static void handle_munmap (void *esp);
 static uint32_t get_argument (void *esp, size_t idx);
 static int find_available_fd (void);
 static bool is_uaddr_valid (const void *uaddr);
@@ -152,6 +153,9 @@ syscall_handler (struct intr_frame *f)
         return;
       case SYS_MMAP:
         f->eax = handle_mmap (f->esp);
+        return;
+      case SYS_MUNMAP:
+        handle_munmap (f->esp);
         return;
     }
   
@@ -406,7 +410,17 @@ handle_mmap (void *esp)
   int fd = (int) get_argument(esp, 1);
   void *addr = (void *) get_argument(esp, 2);
 
-  return mmap_table_add (fd, addr);
+  struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  lock_acquire (&global_filesys_lock);
+  int filesize = file_length (fd_info->file);
+  lock_release (&global_filesys_lock);
+
+  return mmap_table_add (fd_info->file, addr, filesize);
+}
+
+static void
+handle_munmap (void *esp)
+{
 }
 
 static uint32_t

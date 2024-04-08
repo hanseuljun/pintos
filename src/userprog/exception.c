@@ -10,6 +10,7 @@
 
 #ifdef VM
 #include "vm/frame_table.h"
+#include "vm/mmap_table.h"
 #include "vm/suppl_page_table.h"
 #include "vm/swap_table.h"
 #endif
@@ -199,6 +200,14 @@ page_fault (struct intr_frame *f)
           frame_table_install (upage, true);
         }
       
+      return;
+    }
+  
+  if (mmap_table_contains (fault_addr))
+    {
+      uint8_t *upage = pg_round_down (fault_addr);
+      frame_table_install (upage, true);
+      mmap_table_fill (upage);
       return;
     }
 
