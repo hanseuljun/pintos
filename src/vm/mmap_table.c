@@ -46,16 +46,15 @@ void mmap_table_remove (int mapping)
   while (e != list_end (&mmap_list))
     {
       struct mmap_elem *mmap_elem = list_entry (e, struct mmap_elem, elem);
-      if (mmap_elem->id == mapping)
-        {
-          file_close (mmap_elem->file);
-          e = list_remove (e);
-        }
-      else
-        {
-          e = list_next (e);
-        }
+      if (mmap_elem->id != mapping)
+        continue;
+
+      file_close (mmap_elem->file);
+      e = list_remove (e);
+      return;
     }
+
+  NOT_REACHED ();
 }
 
 bool mmap_table_contains (void *uaddr)
