@@ -8,7 +8,7 @@
 #include "vm/suppl_page_table.h"
 #include "vm/swap_table.h"
 
-void *frame_table_install (void *upage, bool writable)
+void *frame_table_install (void *upage, bool swappable, bool writable)
 {
   ASSERT (pg_ofs (upage) == 0);
 
@@ -21,10 +21,7 @@ void *frame_table_install (void *upage, bool writable)
       // enum intr_level old_level;
       // old_level = intr_disable ();
 
-      // Swapping non-writable pages caused error messages like
-      // "Interrupt 0x03 (#BP Breakpoint Exception)" described in E.8 Tips.
-      // So, only swapping writable pages, at least for now.
-      struct suppl_page_elem *suppl_page_elem = suppl_page_table_pop_writable ();
+      struct suppl_page_elem *suppl_page_elem = suppl_page_table_pop_swappable ();
 
       // printf ("suppl_page_elem uninstall tid: %d, upage: %p, kpage: %p\n",
       //         suppl_page_elem_get_tid (suppl_page_elem),
@@ -43,7 +40,7 @@ void *frame_table_install (void *upage, bool writable)
     }
 
   ASSERT (kpage != NULL);
-  ASSERT (suppl_page_table_add_page(upage, kpage, writable));
+  ASSERT (suppl_page_table_add_page(upage, kpage, swappable, writable));
 
   // printf ("frame_table_install, tid: %d, upage: %p, kpage: %p, writable: %d\n", thread_current ()->tid, upage, kpage, writable);
 
@@ -57,7 +54,7 @@ void *frame_table_reinstall (void *upage)
   struct swap_table_elem *swap_table_elem = swap_table_find (thread_tid (), upage);
   ASSERT (swap_table_elem != NULL);
 
-  void *kpage = frame_table_install (upage, swap_table_elem_is_writable (swap_table_elem));
+  void *kpage = frame_table_install (upage, true, swap_table_elem_is_writable (swap_table_elem));
   swap_table_load_and_remove (swap_table_elem, kpage);
 
   // printf ("frame_table_reinstall, tid: %d, upage: %p, kpage: %p\n", thread_current ()->tid, upage, kpage);

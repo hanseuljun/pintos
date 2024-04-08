@@ -6,8 +6,8 @@
 struct suppl_page_elem;
 
 void suppl_page_table_init (void);
-bool suppl_page_table_add_page (void *upage, void *kpage, bool writable);
-struct suppl_page_elem *suppl_page_table_pop_writable (void);
+bool suppl_page_table_add_page (void *upage, void *kpage, bool swappable, bool writable);
+struct suppl_page_elem *suppl_page_table_pop_swappable (void);
 void suppl_page_table_exit_thread (void);
 void suppl_page_table_print (void);
 

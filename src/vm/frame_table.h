@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-void *frame_table_install (void *upage, bool writable);
+void *frame_table_install (void *upage, bool swappable, bool writable);
 void *frame_table_reinstall (void *upage);
 void frame_table_exit_thread (void);
 

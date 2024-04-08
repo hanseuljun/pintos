@@ -197,7 +197,7 @@ page_fault (struct intr_frame *f)
             continue;
           if (swap_table_find (t->tid, upage) != NULL)
             continue;
-          frame_table_install (upage, true);
+          frame_table_install (upage, true, true);
         }
       
       return;
@@ -206,7 +206,7 @@ page_fault (struct intr_frame *f)
   if (mmap_table_contains (fault_addr))
     {
       uint8_t *upage = pg_round_down (fault_addr);
-      frame_table_install (upage, true);
+      frame_table_install (upage, true, true);
       mmap_table_fill (upage);
       return;
     }

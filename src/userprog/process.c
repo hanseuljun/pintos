@@ -578,7 +578,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
 #ifdef VM
       /* Get a page of memory. */
-      uint8_t *kpage = frame_table_install (upage, writable);
+      uint8_t *kpage = frame_table_install (upage, writable, writable);
       if (kpage == NULL)
         return false;
 
@@ -625,7 +625,7 @@ static bool
 setup_stack (void **esp) 
 {
 #ifdef VM
-  frame_table_install (((uint8_t *) PHYS_BASE) - PGSIZE, true);
+  frame_table_install (((uint8_t *) PHYS_BASE) - PGSIZE, true, true);
   memset (((uint8_t *) PHYS_BASE) - PGSIZE, 0, PGSIZE);
   *esp = PHYS_BASE;
   return true;
