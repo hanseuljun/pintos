@@ -122,10 +122,10 @@ syscall_handler (struct intr_frame *f)
         handle_exit (f->esp);
         NOT_REACHED ();
       case SYS_EXEC:
-        f->eax = handle_exec(f->esp);
+        f->eax = handle_exec (f->esp);
         return;
       case SYS_WAIT:
-        f->eax = handle_wait(f->esp);
+        f->eax = handle_wait (f->esp);
         return;
       case SYS_CREATE:
         f->eax = handle_create (f->esp);

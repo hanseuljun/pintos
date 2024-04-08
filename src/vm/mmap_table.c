@@ -84,13 +84,15 @@ void mmap_table_exit_thread (void)
     {
       struct mmap_elem *mmap_elem = list_entry (e, struct mmap_elem, elem);
       if (mmap_elem->tid == tid)
-      {
-        mmap_table_update_file (mmap_elem);
-        file_close (mmap_elem->file);
-        e = list_remove (e);
-      }
+        {
+          mmap_table_update_file (mmap_elem);
+          file_close (mmap_elem->file);
+          e = list_remove (e);
+        }
       else
-        list_next (e);
+        {
+          e = list_next (e);
+        }
     }
 }
 
