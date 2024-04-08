@@ -43,8 +43,10 @@ static int handle_read (void *esp);
 static int handle_write (void *esp);
 static void handle_seek (void *esp);
 static void handle_close (void *esp);
+#ifdef VM
 static int handle_mmap (void *esp);
 static void handle_munmap (void *esp);
+#endif
 static uint32_t get_argument (void *esp, size_t idx);
 static int find_available_fd (void);
 static bool is_uaddr_valid (const void *uaddr);
@@ -151,12 +153,14 @@ syscall_handler (struct intr_frame *f)
       case SYS_CLOSE:
         handle_close (f->esp);
         return;
+#ifdef VM
       case SYS_MMAP:
         f->eax = handle_mmap (f->esp);
         return;
       case SYS_MUNMAP:
         handle_munmap (f->esp);
         return;
+#endif
     }
   
   printf ("Found a syscall with a number (%d) not implemented yet.\n", number);
@@ -404,6 +408,7 @@ handle_close (void *esp)
   free (fd_info);
 }
 
+#ifdef VM
 static int
 handle_mmap (void *esp)
 {
@@ -437,6 +442,7 @@ handle_munmap (void *esp)
   int mapping = (int) get_argument(esp, 1);
   mmap_table_remove (mapping);
 }
+#endif
 
 static uint32_t
 get_argument (void *esp, size_t idx)
