@@ -416,6 +416,8 @@ handle_mmap (void *esp)
     return -1;
   if (!is_fd_for_file (fd))
     return -1;
+  if (mmap_table_contains (addr))
+    return -1;
 
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
   lock_acquire (&global_filesys_lock);
