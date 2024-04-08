@@ -419,6 +419,10 @@ handle_mmap (void *esp)
   if (mmap_table_contains (addr))
     return -1;
 
+  uint32_t *pd = thread_current ()->pagedir;
+  if (pagedir_get_page (pd, addr) != NULL)
+    return -1;
+
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
   lock_acquire (&global_filesys_lock);
   int filesize = file_length (fd_info->file);
