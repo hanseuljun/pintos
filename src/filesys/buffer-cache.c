@@ -58,7 +58,10 @@ void buffer_cache_read (block_sector_t sector_idx)
       list_push_back (&buffer_list, &elem->list_elem);
 
       if (list_size (&buffer_list) > MAX_BUFFER_LIST_SIZE)
-        list_pop_front (&buffer_list);
+        {
+          struct buffer_cache_elem *e = list_entry (list_pop_front (&buffer_list), struct buffer_cache_elem, list_elem);
+          buffer_cache_elem_destroy (e);
+        }
     }
 
   block_read (fs_device, sector_idx, elem->buffer);
