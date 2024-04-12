@@ -17,11 +17,11 @@ struct buffer_cache_elem
     struct list_elem list_elem;
   };
 
-struct buffer_cache_elem *buffer_cache_find (block_sector_t sector_idx);
-struct buffer_cache_elem *buffer_cache_install (block_sector_t sector_idx);
+static struct buffer_cache_elem *buffer_cache_find (block_sector_t sector_idx);
+static struct buffer_cache_elem *buffer_cache_install (block_sector_t sector_idx);
 
-struct buffer_cache_elem *buffer_cache_elem_create (block_sector_t sector_idx);
-void buffer_cache_elem_destroy (struct buffer_cache_elem *elem);
+static struct buffer_cache_elem *buffer_cache_elem_create (block_sector_t sector_idx);
+static void buffer_cache_elem_destroy (struct buffer_cache_elem *elem);
 
 void buffer_cache_init (void)
 {
@@ -66,6 +66,20 @@ void buffer_cache_read_advanced (block_sector_t sector_idx, int sector_ofs, void
 void buffer_cache_write (block_sector_t sector_idx, const void *buffer)
 {
   block_write (fs_device, sector_idx, buffer);
+}
+
+void buffer_cache_write_advanced (block_sector_t sector_idx, int sector_ofs, const void *buffer, int size)
+{
+  /* If the sector contains data before or after the chunk
+      we're writing, then we need to read in the sector
+      first.  Otherwise we start with a sector of all zeros. */
+  int sector_left = BLOCK_SECTOR_SIZE - sector_ofs;
+  if (sector_ofs > 0 || size < sector_left)
+    buffer_cache_read (sector_idx, buffer_cache_bounce ());
+  else
+    memset (buffer_cache_bounce (), 0, BLOCK_SECTOR_SIZE);
+  memcpy (buffer_cache_bounce () + sector_ofs, buffer, size);
+  buffer_cache_write (sector_idx, buffer_cache_bounce ());
 }
 
 struct buffer_cache_elem *buffer_cache_find (block_sector_t sector_idx)

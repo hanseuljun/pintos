@@ -261,15 +261,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       if (chunk_size <= 0)
         break;
 
-      /* If the sector contains data before or after the chunk
-          we're writing, then we need to read in the sector
-          first.  Otherwise we start with a sector of all zeros. */
-      if (sector_ofs > 0 || chunk_size < sector_left)
-        buffer_cache_read (sector_idx, buffer_cache_bounce ());
-      else
-        memset (buffer_cache_bounce (), 0, BLOCK_SECTOR_SIZE);
-      memcpy (buffer_cache_bounce () + sector_ofs, buffer + bytes_written, chunk_size);
-      buffer_cache_write (sector_idx, buffer_cache_bounce ());
+      buffer_cache_write_advanced (sector_idx, sector_ofs, buffer + bytes_written, chunk_size);
 
       /* Advance. */
       size -= chunk_size;
