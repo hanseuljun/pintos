@@ -39,6 +39,8 @@ uint8_t *buffer_cache_buffer (block_sector_t sector_idx)
 
 void buffer_cache_read (block_sector_t sector_idx)
 {
+  // TODO: Save in buffer_list, bounce, in a way clients should use
+  // buffer_cache_buffer, instead of buffer_cache_bounce.
   block_read (fs_device, sector_idx, bounce);
 }
 
