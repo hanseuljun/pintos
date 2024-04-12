@@ -58,16 +58,26 @@ void buffer_cache_write (block_sector_t sector_idx, const void *buffer)
 
 void buffer_cache_write_advanced (block_sector_t sector_idx, int sector_ofs, const void *buffer, int size)
 {
+  struct buffer_cache_elem *elem = buffer_cache_find (sector_idx);
+
   /* If the sector contains data before or after the chunk
       we're writing, then we need to read in the sector
       first.  Otherwise we start with a sector of all zeros. */
   int sector_left = BLOCK_SECTOR_SIZE - sector_ofs;
   if (sector_ofs > 0 || size < sector_left)
-    buffer_cache_read (sector_idx, bounce);
+    {
+      buffer_cache_read (sector_idx, bounce);
+      elem = buffer_cache_find (sector_idx);
+      ASSERT (elem != NULL);
+    }
   else
-    memset (bounce, 0, BLOCK_SECTOR_SIZE);
-  memcpy (bounce + sector_ofs, buffer, size);
-  buffer_cache_write (sector_idx, bounce);
+    {
+      if (elem == NULL)
+        elem = buffer_cache_install (sector_idx);
+      memset (elem->buffer, 0, BLOCK_SECTOR_SIZE);
+    }
+  memcpy (elem->buffer + sector_ofs, buffer, size);
+  buffer_cache_write (sector_idx, elem->buffer);
 }
 
 struct buffer_cache_elem *buffer_cache_find (block_sector_t sector_idx)
