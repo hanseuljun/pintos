@@ -15,6 +15,7 @@ struct buffer_cache_elem
   {
     block_sector_t sector_idx;
     uint8_t *buffer;
+    bool dirty;
     struct list_elem list_elem;
   };
 
@@ -41,6 +42,7 @@ void buffer_cache_done (void)
        e = list_next (e))
     {
       struct buffer_cache_elem *elem = list_entry (e, struct buffer_cache_elem, list_elem);
+      /* Write back to the disk when exiting process. */
       block_write (fs_device, elem->sector_idx, elem->buffer);
     }
 }
@@ -54,16 +56,25 @@ void buffer_cache_read_advanced (block_sector_t sector_idx, int sector_ofs, void
 {
   struct buffer_cache_elem *elem = buffer_cache_find (sector_idx);
   if (elem == NULL)
-    elem = buffer_cache_install (sector_idx);
-
-  block_read (fs_device, sector_idx, elem->buffer);
+    {
+      elem = buffer_cache_install (sector_idx);
+      block_read (fs_device, sector_idx, elem->buffer);
+    }
 
   memcpy (buffer, elem->buffer + sector_ofs, size);
 }
 
 void buffer_cache_write (block_sector_t sector_idx, const void *buffer)
 {
-  block_write (fs_device, sector_idx, buffer);
+  // block_write (fs_device, sector_idx, buffer);
+  struct buffer_cache_elem *elem = buffer_cache_find (sector_idx);
+  if (elem == NULL)
+    {
+      elem = buffer_cache_install (sector_idx);
+      block_read (fs_device, sector_idx, elem->buffer);
+      memcpy (elem->buffer, buffer, BLOCK_SECTOR_SIZE);
+      elem->dirty = true;
+    }
 }
 
 void buffer_cache_write_advanced (block_sector_t sector_idx, int sector_ofs, const void *buffer, int size)
@@ -87,7 +98,8 @@ void buffer_cache_write_advanced (block_sector_t sector_idx, int sector_ofs, con
       memset (elem->buffer, 0, BLOCK_SECTOR_SIZE);
     }
   memcpy (elem->buffer + sector_ofs, buffer, size);
-  buffer_cache_write (sector_idx, elem->buffer);
+  elem->dirty = true;
+  // buffer_cache_write (sector_idx, elem->buffer);
 }
 
 struct buffer_cache_elem *buffer_cache_find (block_sector_t sector_idx)
@@ -112,6 +124,7 @@ struct buffer_cache_elem *buffer_cache_install (block_sector_t sector_idx)
   if (list_size (&buffer_list) > MAX_BUFFER_LIST_SIZE)
     {
       struct buffer_cache_elem *e = list_entry (list_pop_front (&buffer_list), struct buffer_cache_elem, list_elem);
+      /* Write back to the disk when evicting cache. */
       block_write (fs_device, e->sector_idx, e->buffer);
       destroy_buffer_cache_elem (e);
     }
@@ -124,6 +137,7 @@ struct buffer_cache_elem *create_buffer_cache_elem (block_sector_t sector_idx)
   struct buffer_cache_elem *elem = malloc (sizeof (*elem));
   elem->sector_idx = sector_idx;
   elem->buffer = malloc (BLOCK_SECTOR_SIZE);
+  elem->dirty = false;
   return elem;
 }
 
