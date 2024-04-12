@@ -42,21 +42,15 @@ uint8_t *buffer_cache_bounce (void)
 uint8_t *buffer_cache_get_buffer (block_sector_t sector_idx)
 {
   struct buffer_cache_elem *elem = buffer_cache_find (sector_idx);
-
-  if (elem == NULL)
-    {
-      elem = buffer_cache_elem_create (sector_idx);
-      list_push_back (&buffer_list, &elem->list_elem);
-
-      if (list_size (&buffer_list) > MAX_BUFFER_LIST_SIZE)
-        list_pop_front (&buffer_list);
-    }
-
+  ASSERT (elem != NULL);
   return elem->buffer;
 }
 
 void buffer_cache_read (block_sector_t sector_idx)
 {
+  // TODO: no longer read into bounce.
+  block_read (fs_device, sector_idx, bounce);
+
   struct buffer_cache_elem *elem = buffer_cache_find (sector_idx);
   if (elem == NULL)
     {

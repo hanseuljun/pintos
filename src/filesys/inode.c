@@ -270,8 +270,8 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       if (sector_ofs > 0 || chunk_size < sector_left)
         buffer_cache_read (sector_idx);
       else
-        memset (buffer_cache_get_buffer (sector_idx), 0, BLOCK_SECTOR_SIZE);
-      memcpy (buffer_cache_get_buffer (sector_idx) + sector_ofs, buffer + bytes_written, chunk_size);
+        memset (buffer_cache_bounce (), 0, BLOCK_SECTOR_SIZE);
+      memcpy (buffer_cache_bounce () + sector_ofs, buffer + bytes_written, chunk_size);
       buffer_cache_write (sector_idx);
 
       /* Advance. */
