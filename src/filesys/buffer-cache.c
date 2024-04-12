@@ -35,13 +35,6 @@ void buffer_cache_done (void)
   free (bounce);
 }
 
-void *buffer_cache_get_buffer (block_sector_t sector_idx)
-{
-  struct buffer_cache_elem *elem = buffer_cache_find (sector_idx);
-  ASSERT (elem != NULL);
-  return elem->buffer;
-}
-
 void buffer_cache_read (block_sector_t sector_idx, void *buffer)
 {
   buffer_cache_read_advanced (sector_idx, 0, buffer, BLOCK_SECTOR_SIZE);
