@@ -92,11 +92,11 @@ inode_create (block_sector_t sector, off_t length)
           buffer_cache_write (sector, disk_inode);
           if (sectors > 0) 
             {
+              static char zeros[BLOCK_SECTOR_SIZE];
               size_t i;
               
-              memset (buffer_cache_bounce (), 0, BLOCK_SECTOR_SIZE);
               for (i = 0; i < sectors; i++)
-                buffer_cache_write (disk_inode->start + i, buffer_cache_bounce ());
+                buffer_cache_write (disk_inode->start + i, zeros);
             }
           success = true; 
         } 
