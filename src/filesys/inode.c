@@ -89,15 +89,14 @@ inode_create (block_sector_t sector, off_t length)
       disk_inode->magic = INODE_MAGIC;
       if (free_map_allocate (sectors, &disk_inode->start)) 
         {
-          memcpy (buffer_cache_bounce (), disk_inode, BLOCK_SECTOR_SIZE);
-          buffer_cache_write (sector);
+          buffer_cache_write (sector, disk_inode);
           if (sectors > 0) 
             {
               size_t i;
               
               memset (buffer_cache_bounce (), 0, BLOCK_SECTOR_SIZE);
               for (i = 0; i < sectors; i++)
-                buffer_cache_write (disk_inode->start + i);
+                buffer_cache_write (disk_inode->start + i, buffer_cache_bounce ());
             }
           success = true; 
         } 
@@ -272,7 +271,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       else
         memset (buffer_cache_bounce (), 0, BLOCK_SECTOR_SIZE);
       memcpy (buffer_cache_bounce () + sector_ofs, buffer + bytes_written, chunk_size);
-      buffer_cache_write (sector_idx);
+      buffer_cache_write (sector_idx, buffer_cache_bounce ());
 
       /* Advance. */
       size -= chunk_size;

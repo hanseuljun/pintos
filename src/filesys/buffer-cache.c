@@ -34,12 +34,12 @@ void buffer_cache_done (void)
   free (bounce);
 }
 
-uint8_t *buffer_cache_bounce (void)
+void *buffer_cache_bounce (void)
 {
   return bounce;
 }
 
-uint8_t *buffer_cache_get_buffer (block_sector_t sector_idx)
+void *buffer_cache_get_buffer (block_sector_t sector_idx)
 {
   struct buffer_cache_elem *elem = buffer_cache_find (sector_idx);
   ASSERT (elem != NULL);
@@ -64,9 +64,9 @@ void buffer_cache_read (block_sector_t sector_idx)
   block_read (fs_device, sector_idx, elem->buffer);
 }
 
-void buffer_cache_write (block_sector_t sector_idx)
+void buffer_cache_write (block_sector_t sector_idx, void *buffer)
 {
-  block_write (fs_device, sector_idx, bounce);
+  block_write (fs_device, sector_idx, buffer);
 }
 
 struct buffer_cache_elem *buffer_cache_find (block_sector_t sector_idx)
