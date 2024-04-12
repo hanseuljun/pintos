@@ -139,7 +139,7 @@ inode_open (block_sector_t sector)
   inode->deny_write_cnt = 0;
   inode->removed = false;
   buffer_cache_read (inode->sector);
-  memcpy (&inode->data, buffer_cache_bounce (), BLOCK_SECTOR_SIZE);
+  memcpy (&inode->data, buffer_cache_get_buffer (inode->sector), BLOCK_SECTOR_SIZE);
   return inode;
 }
 
@@ -222,7 +222,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
         break;
 
       buffer_cache_read (sector_idx);
-      memcpy (buffer + bytes_read, buffer_cache_bounce () + sector_ofs, chunk_size);
+      memcpy (buffer + bytes_read, buffer_cache_get_buffer (sector_idx) + sector_ofs, chunk_size);
       
       /* Advance. */
       size -= chunk_size;
@@ -270,8 +270,8 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       if (sector_ofs > 0 || chunk_size < sector_left)
         buffer_cache_read (sector_idx);
       else
-        memset (buffer_cache_bounce (), 0, BLOCK_SECTOR_SIZE);
-      memcpy (buffer_cache_bounce () + sector_ofs, buffer + bytes_written, chunk_size);
+        memset (buffer_cache_get_buffer (sector_idx), 0, BLOCK_SECTOR_SIZE);
+      memcpy (buffer_cache_get_buffer (sector_idx) + sector_ofs, buffer + bytes_written, chunk_size);
       buffer_cache_write (sector_idx);
 
       /* Advance. */

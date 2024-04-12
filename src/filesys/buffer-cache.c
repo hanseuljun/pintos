@@ -12,11 +12,14 @@ static struct list buffer_list;
 
 struct buffer_cache_elem
   {
+    block_sector_t sector_idx;
     uint8_t *buffer;
     struct list_elem list_elem;
   };
 
-struct buffer_cache_elem *buffer_cache_elem_create (void);
+struct buffer_cache_elem *buffer_cache_find (block_sector_t sector_idx);
+
+struct buffer_cache_elem *buffer_cache_elem_create (block_sector_t sector_idx);
 void buffer_cache_elem_destroy (struct buffer_cache_elem *elem);
 
 void buffer_cache_init (void)
@@ -36,15 +39,35 @@ uint8_t *buffer_cache_bounce (void)
   return bounce;
 }
 
-uint8_t *buffer_cache_buffer (block_sector_t sector_idx)
+uint8_t *buffer_cache_get_buffer (block_sector_t sector_idx)
 {
+  struct buffer_cache_elem *elem = buffer_cache_find (sector_idx);
+
+  if (elem == NULL)
+    {
+      elem = buffer_cache_elem_create (sector_idx);
+      list_push_back (&buffer_list, &elem->list_elem);
+
+      if (list_size (&buffer_list) > MAX_BUFFER_LIST_SIZE)
+        list_pop_front (&buffer_list);
+    }
+
+  return elem->buffer;
 }
 
 void buffer_cache_read (block_sector_t sector_idx)
 {
-  // TODO: Save in buffer_list, bounce, in a way clients should use
-  // buffer_cache_buffer, instead of buffer_cache_bounce.
-  block_read (fs_device, sector_idx, bounce);
+  struct buffer_cache_elem *elem = buffer_cache_find (sector_idx);
+  if (elem == NULL)
+    {
+      elem = buffer_cache_elem_create (sector_idx);
+      list_push_back (&buffer_list, &elem->list_elem);
+
+      if (list_size (&buffer_list) > MAX_BUFFER_LIST_SIZE)
+        list_pop_front (&buffer_list);
+    }
+
+  block_read (fs_device, sector_idx, elem->buffer);
 }
 
 void buffer_cache_write (block_sector_t sector_idx)
@@ -52,9 +75,24 @@ void buffer_cache_write (block_sector_t sector_idx)
   block_write (fs_device, sector_idx, bounce);
 }
 
-struct buffer_cache_elem *buffer_cache_elem_create (void)
+struct buffer_cache_elem *buffer_cache_find (block_sector_t sector_idx)
+{
+  struct list_elem *e;
+
+  for (e = list_begin (&buffer_list); e != list_end (&buffer_list);
+       e = list_next (e))
+    {
+      struct buffer_cache_elem *elem = list_entry (e, struct buffer_cache_elem, list_elem);
+      if (elem->sector_idx == sector_idx)
+        return elem;
+    }
+  return NULL;
+}
+
+struct buffer_cache_elem *buffer_cache_elem_create (block_sector_t sector_idx)
 {
   struct buffer_cache_elem *elem = malloc (sizeof (*elem));
+  elem->sector_idx = sector_idx;
   elem->buffer = malloc (BLOCK_SECTOR_SIZE);
   return elem;
 }
