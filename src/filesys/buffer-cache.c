@@ -35,11 +35,6 @@ void buffer_cache_done (void)
   free (bounce);
 }
 
-void *buffer_cache_bounce (void)
-{
-  return bounce;
-}
-
 void *buffer_cache_get_buffer (block_sector_t sector_idx)
 {
   struct buffer_cache_elem *elem = buffer_cache_find (sector_idx);
@@ -75,11 +70,11 @@ void buffer_cache_write_advanced (block_sector_t sector_idx, int sector_ofs, con
       first.  Otherwise we start with a sector of all zeros. */
   int sector_left = BLOCK_SECTOR_SIZE - sector_ofs;
   if (sector_ofs > 0 || size < sector_left)
-    buffer_cache_read (sector_idx, buffer_cache_bounce ());
+    buffer_cache_read (sector_idx, bounce);
   else
-    memset (buffer_cache_bounce (), 0, BLOCK_SECTOR_SIZE);
-  memcpy (buffer_cache_bounce () + sector_ofs, buffer, size);
-  buffer_cache_write (sector_idx, buffer_cache_bounce ());
+    memset (bounce, 0, BLOCK_SECTOR_SIZE);
+  memcpy (bounce + sector_ofs, buffer, size);
+  buffer_cache_write (sector_idx, bounce);
 }
 
 struct buffer_cache_elem *buffer_cache_find (block_sector_t sector_idx)
