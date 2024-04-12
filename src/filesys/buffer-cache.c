@@ -20,8 +20,8 @@ struct buffer_cache_elem
 static struct buffer_cache_elem *buffer_cache_find (block_sector_t sector_idx);
 static struct buffer_cache_elem *buffer_cache_install (block_sector_t sector_idx);
 
-static struct buffer_cache_elem *buffer_cache_elem_create (block_sector_t sector_idx);
-static void buffer_cache_elem_destroy (struct buffer_cache_elem *elem);
+static struct buffer_cache_elem *create_buffer_cache_elem (block_sector_t sector_idx);
+static void destroy_buffer_cache_elem (struct buffer_cache_elem *elem);
 
 void buffer_cache_init (void)
 {
@@ -96,19 +96,19 @@ struct buffer_cache_elem *buffer_cache_find (block_sector_t sector_idx)
 
 struct buffer_cache_elem *buffer_cache_install (block_sector_t sector_idx)
 {
-  struct buffer_cache_elem *elem = buffer_cache_elem_create (sector_idx);
+  struct buffer_cache_elem *elem = create_buffer_cache_elem (sector_idx);
   list_push_back (&buffer_list, &elem->list_elem);
 
   if (list_size (&buffer_list) > MAX_BUFFER_LIST_SIZE)
     {
       struct buffer_cache_elem *e = list_entry (list_pop_front (&buffer_list), struct buffer_cache_elem, list_elem);
-      buffer_cache_elem_destroy (e);
+      destroy_buffer_cache_elem (e);
     }
 
   return elem;
 }
 
-struct buffer_cache_elem *buffer_cache_elem_create (block_sector_t sector_idx)
+struct buffer_cache_elem *create_buffer_cache_elem (block_sector_t sector_idx)
 {
   struct buffer_cache_elem *elem = malloc (sizeof (*elem));
   elem->sector_idx = sector_idx;
@@ -116,7 +116,7 @@ struct buffer_cache_elem *buffer_cache_elem_create (block_sector_t sector_idx)
   return elem;
 }
 
-void buffer_cache_elem_destroy (struct buffer_cache_elem *elem)
+void destroy_buffer_cache_elem (struct buffer_cache_elem *elem)
 {
   free (elem->buffer);
   free (elem);
