@@ -48,6 +48,11 @@ void *buffer_cache_get_buffer (block_sector_t sector_idx)
 
 void buffer_cache_read (block_sector_t sector_idx, void *buffer)
 {
+  buffer_cache_read_advanced (sector_idx, 0, buffer, BLOCK_SECTOR_SIZE);
+}
+
+void buffer_cache_read_advanced (block_sector_t sector_idx, int sector_ofs, void *buffer, int size)
+{
   struct buffer_cache_elem *elem = buffer_cache_find (sector_idx);
   if (elem == NULL)
     {
@@ -63,7 +68,7 @@ void buffer_cache_read (block_sector_t sector_idx, void *buffer)
 
   block_read (fs_device, sector_idx, elem->buffer);
 
-  memcpy (buffer, elem->buffer, BLOCK_SECTOR_SIZE);
+  memcpy (buffer, elem->buffer + sector_ofs, size);
 }
 
 void buffer_cache_write (block_sector_t sector_idx, const void *buffer)

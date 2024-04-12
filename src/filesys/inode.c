@@ -219,9 +219,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       if (chunk_size <= 0)
         break;
 
-      // TODO: don't redundantly read into buffer_cache_bounce.
-      buffer_cache_read (sector_idx, buffer_cache_bounce ());
-      memcpy (buffer + bytes_read, buffer_cache_get_buffer (sector_idx) + sector_ofs, chunk_size);
+      buffer_cache_read_advanced (sector_idx, sector_ofs, buffer + bytes_read, chunk_size);
       
       /* Advance. */
       size -= chunk_size;
