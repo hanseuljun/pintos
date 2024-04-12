@@ -7,6 +7,7 @@
 /* From 5.3.4 Buffer Cache. */
 #define MAX_BUFFER_LIST_SIZE 64
 
+// TODO: remove use of this bounce buffer.
 static uint8_t *bounce;
 static struct list buffer_list;
 
@@ -33,6 +34,15 @@ void buffer_cache_init (void)
 void buffer_cache_done (void)
 {
   free (bounce);
+
+  struct list_elem *e;
+
+  for (e = list_begin (&buffer_list); e != list_end (&buffer_list);
+       e = list_next (e))
+    {
+      struct buffer_cache_elem *elem = list_entry (e, struct buffer_cache_elem, list_elem);
+      block_write (fs_device, elem->sector_idx, elem->buffer);
+    }
 }
 
 void buffer_cache_read (block_sector_t sector_idx, void *buffer)
@@ -102,6 +112,7 @@ struct buffer_cache_elem *buffer_cache_install (block_sector_t sector_idx)
   if (list_size (&buffer_list) > MAX_BUFFER_LIST_SIZE)
     {
       struct buffer_cache_elem *e = list_entry (list_pop_front (&buffer_list), struct buffer_cache_elem, list_elem);
+      block_write (fs_device, e->sector_idx, e->buffer);
       destroy_buffer_cache_elem (e);
     }
 
