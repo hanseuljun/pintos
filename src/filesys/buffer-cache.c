@@ -18,6 +18,7 @@ struct buffer_cache_elem
   };
 
 struct buffer_cache_elem *buffer_cache_find (block_sector_t sector_idx);
+struct buffer_cache_elem *buffer_cache_install (block_sector_t sector_idx);
 
 struct buffer_cache_elem *buffer_cache_elem_create (block_sector_t sector_idx);
 void buffer_cache_elem_destroy (struct buffer_cache_elem *elem);
@@ -55,16 +56,7 @@ void buffer_cache_read_advanced (block_sector_t sector_idx, int sector_ofs, void
 {
   struct buffer_cache_elem *elem = buffer_cache_find (sector_idx);
   if (elem == NULL)
-    {
-      elem = buffer_cache_elem_create (sector_idx);
-      list_push_back (&buffer_list, &elem->list_elem);
-
-      if (list_size (&buffer_list) > MAX_BUFFER_LIST_SIZE)
-        {
-          struct buffer_cache_elem *e = list_entry (list_pop_front (&buffer_list), struct buffer_cache_elem, list_elem);
-          buffer_cache_elem_destroy (e);
-        }
-    }
+    elem = buffer_cache_install (sector_idx);
 
   block_read (fs_device, sector_idx, elem->buffer);
 
@@ -88,6 +80,20 @@ struct buffer_cache_elem *buffer_cache_find (block_sector_t sector_idx)
         return elem;
     }
   return NULL;
+}
+
+struct buffer_cache_elem *buffer_cache_install (block_sector_t sector_idx)
+{
+  struct buffer_cache_elem *elem = buffer_cache_elem_create (sector_idx);
+  list_push_back (&buffer_list, &elem->list_elem);
+
+  if (list_size (&buffer_list) > MAX_BUFFER_LIST_SIZE)
+    {
+      struct buffer_cache_elem *e = list_entry (list_pop_front (&buffer_list), struct buffer_cache_elem, list_elem);
+      buffer_cache_elem_destroy (e);
+    }
+
+  return elem;
 }
 
 struct buffer_cache_elem *buffer_cache_elem_create (block_sector_t sector_idx)
