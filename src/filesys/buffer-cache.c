@@ -46,11 +46,8 @@ void *buffer_cache_get_buffer (block_sector_t sector_idx)
   return elem->buffer;
 }
 
-void buffer_cache_read (block_sector_t sector_idx)
+void buffer_cache_read (block_sector_t sector_idx, void *buffer)
 {
-  // TODO: no longer read into bounce.
-  block_read (fs_device, sector_idx, bounce);
-
   struct buffer_cache_elem *elem = buffer_cache_find (sector_idx);
   if (elem == NULL)
     {
@@ -65,9 +62,11 @@ void buffer_cache_read (block_sector_t sector_idx)
     }
 
   block_read (fs_device, sector_idx, elem->buffer);
+
+  memcpy (buffer, elem->buffer, BLOCK_SECTOR_SIZE);
 }
 
-void buffer_cache_write (block_sector_t sector_idx, void *buffer)
+void buffer_cache_write (block_sector_t sector_idx, const void *buffer)
 {
   block_write (fs_device, sector_idx, buffer);
 }

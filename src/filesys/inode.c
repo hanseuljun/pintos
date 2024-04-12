@@ -137,8 +137,7 @@ inode_open (block_sector_t sector)
   inode->open_cnt = 1;
   inode->deny_write_cnt = 0;
   inode->removed = false;
-  buffer_cache_read (inode->sector);
-  memcpy (&inode->data, buffer_cache_get_buffer (inode->sector), BLOCK_SECTOR_SIZE);
+  buffer_cache_read (inode->sector, &inode->data);
   return inode;
 }
 
@@ -220,7 +219,8 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       if (chunk_size <= 0)
         break;
 
-      buffer_cache_read (sector_idx);
+      // TODO: don't redundantly read into buffer_cache_bounce.
+      buffer_cache_read (sector_idx, buffer_cache_bounce ());
       memcpy (buffer + bytes_read, buffer_cache_get_buffer (sector_idx) + sector_ofs, chunk_size);
       
       /* Advance. */
@@ -267,7 +267,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
           we're writing, then we need to read in the sector
           first.  Otherwise we start with a sector of all zeros. */
       if (sector_ofs > 0 || chunk_size < sector_left)
-        buffer_cache_read (sector_idx);
+        buffer_cache_read (sector_idx, buffer_cache_bounce ());
       else
         memset (buffer_cache_bounce (), 0, BLOCK_SECTOR_SIZE);
       memcpy (buffer_cache_bounce () + sector_ofs, buffer + bytes_written, chunk_size);
