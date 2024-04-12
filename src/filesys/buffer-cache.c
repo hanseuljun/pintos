@@ -4,6 +4,9 @@
 #include "filesys/filesys.h"
 #include "threads/malloc.h"
 
+/* From 5.3.4 Buffer Cache. */
+#define MAX_BUFFER_LIST_SIZE 64
+
 static uint8_t *bounce;
 static struct list buffer_list;
 
