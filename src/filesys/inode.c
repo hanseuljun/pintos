@@ -4,7 +4,6 @@
 #include <round.h>
 #include <string.h>
 #include "filesys/buffer-cache.h"
-#include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
 
@@ -90,14 +89,15 @@ inode_create (block_sector_t sector, off_t length)
       disk_inode->magic = INODE_MAGIC;
       if (free_map_allocate (sectors, &disk_inode->start)) 
         {
-          block_write (fs_device, sector, disk_inode);
+          memcpy (buffer_cache_buffer (), disk_inode, BLOCK_SECTOR_SIZE);
+          buffer_cache_write (sector);
           if (sectors > 0) 
             {
-              static char zeros[BLOCK_SECTOR_SIZE];
               size_t i;
               
-              for (i = 0; i < sectors; i++) 
-                block_write (fs_device, disk_inode->start + i, zeros);
+              memset (buffer_cache_buffer (), 0, BLOCK_SECTOR_SIZE);
+              for (i = 0; i < sectors; i++)
+                buffer_cache_write (disk_inode->start + i);
             }
           success = true; 
         } 
