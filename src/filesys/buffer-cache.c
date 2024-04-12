@@ -4,24 +4,24 @@
 #include "threads/malloc.h"
 #include "threads/synch.h"
 
-static uint8_t *buffer;
+static uint8_t *bounce;
 static struct lock buffer_lock;
 
 void buffer_cache_init (void)
 {
-  buffer = malloc (BLOCK_SECTOR_SIZE);
+  bounce = malloc (BLOCK_SECTOR_SIZE);
+  ASSERT (bounce != NULL);
   lock_init (&buffer_lock);
-  ASSERT (buffer != NULL);
 }
 
 void buffer_cache_done (void)
 {
-  free (buffer);
+  free (bounce);
 }
 
-uint8_t *buffer_cache_get_buffer (void)
+uint8_t *buffer_cache_get_bounce (void)
 {
-  return buffer;
+  return bounce;
 }
 
 struct lock *buffer_cache_get_lock (void)
@@ -31,10 +31,10 @@ struct lock *buffer_cache_get_lock (void)
 
 void buffer_cache_read (block_sector_t sector_idx)
 {
-  block_read (fs_device, sector_idx, buffer);
+  block_read (fs_device, sector_idx, bounce);
 }
 
 void buffer_cache_write (block_sector_t sector_idx)
 {
-  block_write (fs_device, sector_idx, buffer);
+  block_write (fs_device, sector_idx, bounce);
 }
