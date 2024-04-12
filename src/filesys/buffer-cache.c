@@ -1,5 +1,6 @@
 #include "buffer-cache.h"
-#include "devices/block.h"
+#include <string.h>
+#include "filesys/filesys.h"
 #include "threads/malloc.h"
 #include "threads/synch.h"
 
@@ -31,4 +32,14 @@ void buffer_cache_lock (void)
 void buffer_cache_unlock (void)
 {
   lock_release (&buffer_lock);
+}
+
+void buffer_cache_read (block_sector_t sector_idx)
+{
+  block_read (fs_device, sector_idx, buffer);
+}
+
+void buffer_cache_write (block_sector_t sector_idx)
+{
+  block_write (fs_device, sector_idx, buffer);
 }
