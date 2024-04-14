@@ -19,19 +19,14 @@ void buffer_cache_done (void)
   free (buffer);
 }
 
-uint8_t *buffer_cache_buffer (void)
+uint8_t *buffer_cache_get_buffer (void)
 {
   return buffer;
 }
 
-void buffer_cache_lock (void)
+struct lock *buffer_cache_get_lock (void)
 {
-  lock_acquire (&buffer_lock);
-}
-
-void buffer_cache_unlock (void)
-{
-  lock_release (&buffer_lock);
+  return &buffer_lock;
 }
 
 void buffer_cache_read (block_sector_t sector_idx)
