@@ -138,8 +138,10 @@ inode_open (block_sector_t sector)
   inode->open_cnt = 1;
   inode->deny_write_cnt = 0;
   inode->removed = false;
+  buffer_cache_lock ();
   buffer_cache_read (inode->sector);
   memcpy (&inode->data, buffer_cache_buffer (), BLOCK_SECTOR_SIZE);
+  buffer_cache_unlock ();
   return inode;
 }
 
