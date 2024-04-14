@@ -7,6 +7,7 @@
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
 #include "threads/synch.h"
+#include "threads/thread.h"
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
@@ -59,14 +60,14 @@ byte_to_sector (const struct inode *inode, off_t pos)
 static struct list open_inodes;
 
 /* A temporary variable to prevent crashing while creating inodes. */
-static bool skip_write_lock_since_creating;
+static tid_t thread_creating_inode;
 
 /* Initializes the inode module. */
 void
-inode_init (void) 
+inode_init (void)
 {
   list_init (&open_inodes);
-  skip_write_lock_since_creating = false;
+  thread_creating_inode = TID_ERROR;
 }
 
 /* Initializes an inode with LENGTH bytes of data and
@@ -88,7 +89,7 @@ inode_create (block_sector_t sector, off_t length)
 
   disk_inode = calloc (1, sizeof *disk_inode);
   lock_acquire (buffer_cache_get_lock ());
-  skip_write_lock_since_creating = true;
+  thread_creating_inode = thread_tid ();
   if (disk_inode != NULL)
     {
       size_t sectors = bytes_to_sectors (length);
@@ -110,7 +111,7 @@ inode_create (block_sector_t sector, off_t length)
         } 
       free (disk_inode);
     }
-  skip_write_lock_since_creating = false;
+  thread_creating_inode = TID_ERROR;
   lock_release (buffer_cache_get_lock ());
   return success;
 }
@@ -261,7 +262,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   if (inode->deny_write_cnt)
     return 0;
 
-  if (!skip_write_lock_since_creating)
+  if (thread_creating_inode != thread_tid ())
     lock_acquire (buffer_cache_get_lock ());
   while (size > 0) 
     {
@@ -294,7 +295,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       offset += chunk_size;
       bytes_written += chunk_size;
     }
-  if (!skip_write_lock_since_creating)
+  if (thread_creating_inode != thread_tid ())
     lock_release (buffer_cache_get_lock ());
 
   return bytes_written;
