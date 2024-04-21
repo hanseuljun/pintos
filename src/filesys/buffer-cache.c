@@ -34,18 +34,14 @@ void buffer_cache_done (void)
   free (bounce);
 }
 
-uint8_t *buffer_cache_get_bounce (void)
-{
-  return bounce;
-}
-
 struct lock *buffer_cache_get_lock (void)
 {
   return &buffer_lock;
 }
 
-uint8_t *buffer_cache_buffer (block_sector_t sector_idx)
+uint8_t *buffer_cache_get_buffer (block_sector_t sector_idx)
 {
+  return bounce;
 }
 
 void buffer_cache_read (block_sector_t sector_idx)
