@@ -21,9 +21,6 @@ struct fs_cache_elem
 struct fs_cache_elem *fs_cache_find (block_sector_t sector_idx);
 struct fs_cache_elem *fs_cache_install (block_sector_t sector_idx);
 
-struct fs_cache_elem *fs_cache_elem_create (block_sector_t sector_idx);
-void fs_cache_elem_destroy (struct fs_cache_elem *elem);
-
 void fs_cache_init (void)
 {
   lock_init (&buffer_lock);
@@ -34,11 +31,14 @@ void fs_cache_done (void)
 {
   struct list_elem *e;
 
-  for (e = list_begin (&buffer_list); e != list_end (&buffer_list);
-       e = list_next (e))
+  while (!list_empty (&buffer_list))
     {
+      e = list_pop_front (&buffer_list);
       struct fs_cache_elem *elem = list_entry (e, struct fs_cache_elem, list_elem);
       block_write (fs_device, elem->sector_idx, elem->buffer);
+
+      free (elem->buffer);
+      free (elem);
     }
 }
 
@@ -105,7 +105,9 @@ struct fs_cache_elem *fs_cache_install (block_sector_t sector_idx)
 
   if (list_size (&buffer_list) < MAX_BUFFER_LIST_SIZE)
     {
-      elem = fs_cache_elem_create (sector_idx);
+      elem = malloc (sizeof (*elem));
+      elem->buffer = malloc (BLOCK_SECTOR_SIZE);
+      elem->sector_idx = sector_idx;
     }
   else
     {
@@ -116,18 +118,4 @@ struct fs_cache_elem *fs_cache_install (block_sector_t sector_idx)
     }
   list_push_back (&buffer_list, &elem->list_elem);
   return elem;
-}
-
-struct fs_cache_elem *fs_cache_elem_create (block_sector_t sector_idx)
-{
-  struct fs_cache_elem *elem = malloc (sizeof (*elem));
-  elem->buffer = malloc (BLOCK_SECTOR_SIZE);
-  elem->sector_idx = sector_idx;
-  return elem;
-}
-
-void fs_cache_elem_destroy (struct fs_cache_elem *elem)
-{
-  free (elem->buffer);
-  free (elem);
 }
