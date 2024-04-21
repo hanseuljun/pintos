@@ -99,6 +99,7 @@ inode_create (block_sector_t sector, off_t length)
         {
           memcpy (fs_cache_get_buffer (sector), disk_inode, BLOCK_SECTOR_SIZE);
           fs_cache_write (sector);
+          fs_cache_flush (sector);
           if (sectors > 0) 
             {
               size_t i;
@@ -107,6 +108,7 @@ inode_create (block_sector_t sector, off_t length)
                 {
                   memset (fs_cache_get_buffer (disk_inode->start + i), 0, BLOCK_SECTOR_SIZE);
                   fs_cache_write (disk_inode->start + i);
+                  fs_cache_flush (disk_inode->start + i);
                 }
             }
           success = true; 
@@ -192,9 +194,13 @@ inode_close (struct inode *inode)
       /* Deallocate blocks if removed. */
       if (inode->removed) 
         {
+          size_t sectors = bytes_to_sectors (inode->data.length);
           free_map_release (inode->sector, 1);
-          free_map_release (inode->data.start,
-                            bytes_to_sectors (inode->data.length)); 
+          free_map_release (inode->data.start, sectors);
+
+          fs_cache_flush (inode->sector);
+          for (size_t i = 0; i < sectors; i++)
+            fs_cache_flush (inode->data.start + i);
         }
 
       free (inode); 
