@@ -3,7 +3,7 @@
 #include <debug.h>
 #include <round.h>
 #include <string.h>
-#include "filesys/buffer-cache.h"
+#include "filesys/fs-cache.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
 #include "threads/synch.h"
@@ -88,7 +88,7 @@ inode_create (block_sector_t sector, off_t length)
   ASSERT (sizeof *disk_inode == BLOCK_SECTOR_SIZE);
 
   disk_inode = calloc (1, sizeof *disk_inode);
-  lock_acquire (buffer_cache_get_lock ());
+  lock_acquire (fs_cache_get_lock ());
   thread_creating_inode = thread_tid ();
   if (disk_inode != NULL)
     {
@@ -97,16 +97,16 @@ inode_create (block_sector_t sector, off_t length)
       disk_inode->magic = INODE_MAGIC;
       if (free_map_allocate (sectors, &disk_inode->start)) 
         {
-          memcpy (buffer_cache_get_buffer (sector), disk_inode, BLOCK_SECTOR_SIZE);
-          buffer_cache_write (sector);
+          memcpy (fs_cache_get_buffer (sector), disk_inode, BLOCK_SECTOR_SIZE);
+          fs_cache_write (sector);
           if (sectors > 0) 
             {
               size_t i;
               
               for (i = 0; i < sectors; i++)
                 {
-                  memset (buffer_cache_get_buffer (disk_inode->start + i), 0, BLOCK_SECTOR_SIZE);
-                  buffer_cache_write (disk_inode->start + i);
+                  memset (fs_cache_get_buffer (disk_inode->start + i), 0, BLOCK_SECTOR_SIZE);
+                  fs_cache_write (disk_inode->start + i);
                 }
             }
           success = true; 
@@ -114,7 +114,7 @@ inode_create (block_sector_t sector, off_t length)
       free (disk_inode);
     }
   thread_creating_inode = TID_ERROR;
-  lock_release (buffer_cache_get_lock ());
+  lock_release (fs_cache_get_lock ());
   return success;
 }
 
@@ -150,10 +150,10 @@ inode_open (block_sector_t sector)
   inode->open_cnt = 1;
   inode->deny_write_cnt = 0;
   inode->removed = false;
-  lock_acquire (buffer_cache_get_lock ());
-  buffer_cache_read (inode->sector);
-  memcpy (&inode->data, buffer_cache_get_buffer (inode->sector), BLOCK_SECTOR_SIZE);
-  lock_release (buffer_cache_get_lock ());
+  lock_acquire (fs_cache_get_lock ());
+  fs_cache_read (inode->sector);
+  memcpy (&inode->data, fs_cache_get_buffer (inode->sector), BLOCK_SECTOR_SIZE);
+  lock_release (fs_cache_get_lock ());
   return inode;
 }
 
@@ -219,7 +219,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   uint8_t *buffer = buffer_;
   off_t bytes_read = 0;
 
-  lock_acquire (buffer_cache_get_lock ());
+  lock_acquire (fs_cache_get_lock ());
   while (size > 0) 
     {
       /* Disk sector to read, starting byte offset within sector. */
@@ -236,15 +236,15 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       if (chunk_size <= 0)
         break;
 
-      buffer_cache_read (sector_idx);
-      memcpy (buffer + bytes_read, buffer_cache_get_buffer (sector_idx) + sector_ofs, chunk_size);
+      fs_cache_read (sector_idx);
+      memcpy (buffer + bytes_read, fs_cache_get_buffer (sector_idx) + sector_ofs, chunk_size);
       
       /* Advance. */
       size -= chunk_size;
       offset += chunk_size;
       bytes_read += chunk_size;
     }
-  lock_release (buffer_cache_get_lock ());
+  lock_release (fs_cache_get_lock ());
 
   return bytes_read;
 }
@@ -265,7 +265,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
     return 0;
 
   if (thread_creating_inode != thread_tid ())
-    lock_acquire (buffer_cache_get_lock ());
+    lock_acquire (fs_cache_get_lock ());
   while (size > 0) 
     {
       /* Sector to write, starting byte offset within sector. */
@@ -286,11 +286,11 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
           we're writing, then we need to read in the sector
           first.  Otherwise we start with a sector of all zeros. */
       if (sector_ofs > 0 || chunk_size < sector_left)
-        buffer_cache_read (sector_idx);
+        fs_cache_read (sector_idx);
       else
-        memset (buffer_cache_get_buffer (sector_idx), 0, BLOCK_SECTOR_SIZE);
-      memcpy (buffer_cache_get_buffer (sector_idx) + sector_ofs, buffer + bytes_written, chunk_size);
-      buffer_cache_write (sector_idx);
+        memset (fs_cache_get_buffer (sector_idx), 0, BLOCK_SECTOR_SIZE);
+      memcpy (fs_cache_get_buffer (sector_idx) + sector_ofs, buffer + bytes_written, chunk_size);
+      fs_cache_write (sector_idx);
 
       /* Advance. */
       size -= chunk_size;
@@ -298,7 +298,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       bytes_written += chunk_size;
     }
   if (thread_creating_inode != thread_tid ())
-    lock_release (buffer_cache_get_lock ());
+    lock_release (fs_cache_get_lock ());
 
   return bytes_written;
 }

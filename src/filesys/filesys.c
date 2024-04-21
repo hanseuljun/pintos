@@ -2,7 +2,7 @@
 #include <debug.h>
 #include <stdio.h>
 #include <string.h>
-#include "filesys/buffer-cache.h"
+#include "filesys/fs-cache.h"
 #include "filesys/file.h"
 #include "filesys/free-map.h"
 #include "filesys/inode.h"
@@ -24,7 +24,7 @@ filesys_init (bool format)
 
   inode_init ();
   free_map_init ();
-  buffer_cache_init ();
+  fs_cache_init ();
 
   if (format) 
     do_format ();
@@ -37,7 +37,7 @@ filesys_init (bool format)
 void
 filesys_done (void) 
 {
-  buffer_cache_done ();
+  fs_cache_done ();
   free_map_close ();
 }
 
