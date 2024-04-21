@@ -78,9 +78,8 @@ void fs_cache_read (block_sector_t sector_idx)
           elem->sector_idx = sector_idx;
         }
       list_push_back (&buffer_list, &elem->list_elem);
+      block_read (fs_device, sector_idx, elem->buffer);
     }
-
-  block_read (fs_device, sector_idx, elem->buffer);
 }
 
 void fs_cache_write (block_sector_t sector_idx)
