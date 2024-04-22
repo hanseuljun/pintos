@@ -16,6 +16,7 @@ struct fs_cache_elem
     block_sector_t sector_idx;
     uint8_t *buffer;
     struct list_elem list_elem;
+    bool should_write;
   };
 
 struct fs_cache_elem *fs_cache_find (block_sector_t sector_idx);
@@ -35,7 +36,8 @@ void fs_cache_done (void)
     {
       e = list_pop_front (&buffer_list);
       struct fs_cache_elem *elem = list_entry (e, struct fs_cache_elem, list_elem);
-      block_write (fs_device, elem->sector_idx, elem->buffer);
+      if (elem->should_write)
+        block_write (fs_device, elem->sector_idx, elem->buffer);
 
       free (elem->buffer);
       free (elem);
@@ -51,21 +53,18 @@ uint8_t *fs_cache_get_buffer (block_sector_t sector_idx)
 {
   struct fs_cache_elem *elem = fs_cache_find (sector_idx);
   if (elem == NULL)
-    {
       elem = fs_cache_install (sector_idx);
-    }
 
   return elem->buffer;
 }
 
 void fs_cache_read (block_sector_t sector_idx)
 {
-  struct fs_cache_elem *elem = fs_cache_find (sector_idx);
-  if (elem == NULL)
-    {
-      elem = fs_cache_install (sector_idx);
-      block_read (fs_device, sector_idx, elem->buffer);
-    }
+  if (fs_cache_find (sector_idx) != NULL)
+    return;
+
+  struct fs_cache_elem *elem = fs_cache_install (sector_idx);
+  block_read (fs_device, sector_idx, elem->buffer);
 }
 
 void fs_cache_write (block_sector_t sector_idx)
@@ -76,13 +75,19 @@ void fs_cache_write (block_sector_t sector_idx)
       elem = fs_cache_install (sector_idx);
       block_read (fs_device, sector_idx, elem->buffer);
     }
+  elem->should_write = true;
 }
 
 void fs_cache_flush (block_sector_t sector_idx)
 {
   struct fs_cache_elem *elem = fs_cache_find (sector_idx);
-  if (elem != NULL)
-    block_write (fs_device, sector_idx, elem->buffer);
+  if (elem == NULL)
+    return;
+  if (!elem->should_write)
+    return;
+
+  block_write (fs_device, sector_idx, elem->buffer);
+  elem->should_write = false;
 }
 
 struct fs_cache_elem *fs_cache_find (block_sector_t sector_idx)
@@ -108,13 +113,16 @@ struct fs_cache_elem *fs_cache_install (block_sector_t sector_idx)
       elem = malloc (sizeof (*elem));
       elem->buffer = malloc (BLOCK_SECTOR_SIZE);
       elem->sector_idx = sector_idx;
+      elem->should_write = false;
     }
   else
     {
       struct list_elem *e = list_pop_front (&buffer_list);
       elem = list_entry (e, struct fs_cache_elem, list_elem);
-      block_write (fs_device, elem->sector_idx, elem->buffer);
+      if (elem->should_write)
+        block_write (fs_device, elem->sector_idx, elem->buffer);
       elem->sector_idx = sector_idx;
+      elem->should_write = false;
     }
   list_push_back (&buffer_list, &elem->list_elem);
   return elem;
