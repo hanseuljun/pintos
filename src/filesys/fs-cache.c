@@ -19,8 +19,8 @@ struct fs_cache_elem
     bool should_write;
   };
 
-struct fs_cache_elem *fs_cache_find (block_sector_t sector_idx);
-struct fs_cache_elem *fs_cache_install (block_sector_t sector_idx);
+struct fs_cache_elem *find_fs_cache_elem (block_sector_t sector_idx);
+struct fs_cache_elem *install_fs_cache_elem (block_sector_t sector_idx);
 
 void fs_cache_init (void)
 {
@@ -51,28 +51,28 @@ struct lock *fs_cache_get_lock (void)
 
 uint8_t *fs_cache_get_buffer (block_sector_t sector_idx)
 {
-  struct fs_cache_elem *elem = fs_cache_find (sector_idx);
+  struct fs_cache_elem *elem = find_fs_cache_elem (sector_idx);
   if (elem == NULL)
-      elem = fs_cache_install (sector_idx);
+    elem = install_fs_cache_elem (sector_idx);
 
   return elem->buffer;
 }
 
 void fs_cache_read (block_sector_t sector_idx)
 {
-  if (fs_cache_find (sector_idx) != NULL)
+  if (find_fs_cache_elem (sector_idx) != NULL)
     return;
 
-  struct fs_cache_elem *elem = fs_cache_install (sector_idx);
+  struct fs_cache_elem *elem = install_fs_cache_elem (sector_idx);
   block_read (fs_device, sector_idx, elem->buffer);
 }
 
 void fs_cache_write (block_sector_t sector_idx)
 {
-  struct fs_cache_elem *elem = fs_cache_find (sector_idx);
+  struct fs_cache_elem *elem = find_fs_cache_elem (sector_idx);
   if (elem == NULL)
     {
-      elem = fs_cache_install (sector_idx);
+      elem = install_fs_cache_elem (sector_idx);
       block_read (fs_device, sector_idx, elem->buffer);
     }
   elem->should_write = true;
@@ -80,7 +80,7 @@ void fs_cache_write (block_sector_t sector_idx)
 
 void fs_cache_flush (block_sector_t sector_idx)
 {
-  struct fs_cache_elem *elem = fs_cache_find (sector_idx);
+  struct fs_cache_elem *elem = find_fs_cache_elem (sector_idx);
   if (elem == NULL)
     return;
   if (!elem->should_write)
@@ -90,7 +90,7 @@ void fs_cache_flush (block_sector_t sector_idx)
   elem->should_write = false;
 }
 
-struct fs_cache_elem *fs_cache_find (block_sector_t sector_idx)
+struct fs_cache_elem *find_fs_cache_elem (block_sector_t sector_idx)
 {
   struct list_elem *e;
 
@@ -104,7 +104,7 @@ struct fs_cache_elem *fs_cache_find (block_sector_t sector_idx)
   return NULL;
 }
 
-struct fs_cache_elem *fs_cache_install (block_sector_t sector_idx)
+struct fs_cache_elem *install_fs_cache_elem (block_sector_t sector_idx)
 {
   struct fs_cache_elem *elem;
 
