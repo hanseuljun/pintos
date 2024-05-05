@@ -195,10 +195,6 @@ inode_close (struct inode *inode)
           size_t sectors = bytes_to_sectors (inode->data.length);
           free_map_release (inode->sector, 1);
           free_map_release (inode->data.start, sectors);
-
-          fs_cache_flush (inode->sector);
-          for (size_t i = 0; i < sectors; i++)
-            fs_cache_flush (inode->data.start + i);
         }
 
       free (inode); 

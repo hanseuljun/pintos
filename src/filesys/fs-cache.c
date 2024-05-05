@@ -80,18 +80,6 @@ void fs_cache_write (block_sector_t sector_idx)
   elem->should_write = true;
 }
 
-void fs_cache_flush (block_sector_t sector_idx)
-{
-  struct fs_cache_elem *elem = find_fs_cache_elem (sector_idx);
-  if (elem == NULL)
-    return;
-  if (!elem->should_write)
-    return;
-
-  block_write (fs_device, sector_idx, elem->buffer);
-  elem->should_write = false;
-}
-
 struct fs_cache_elem *find_fs_cache_elem (block_sector_t sector_idx)
 {
   struct list_elem *e;
