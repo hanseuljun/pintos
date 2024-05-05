@@ -99,7 +99,6 @@ inode_create (block_sector_t sector, off_t length)
         {
           memcpy (fs_cache_get_buffer (sector), disk_inode, BLOCK_SECTOR_SIZE);
           fs_cache_write (sector);
-          fs_cache_flush (sector);
           if (sectors > 0) 
             {
               size_t i;
@@ -108,7 +107,6 @@ inode_create (block_sector_t sector, off_t length)
                 {
                   memset (fs_cache_get_buffer (disk_inode->start + i), 0, BLOCK_SECTOR_SIZE);
                   fs_cache_write (disk_inode->start + i);
-                  fs_cache_flush (disk_inode->start + i);
                 }
             }
           success = true; 
