@@ -26,6 +26,8 @@ void fs_cache_init (void)
 {
   lock_init (&buffer_lock);
   list_init (&buffer_list);
+
+  // TODO: Periodically write all dirty, cached blocks back to disk.
 }
 
 void fs_cache_done (void)
@@ -108,6 +110,7 @@ struct fs_cache_elem *install_fs_cache_elem (block_sector_t sector_idx)
 {
   struct fs_cache_elem *elem;
 
+  // TODO: Implement read-ahead.
   if (list_size (&buffer_list) < MAX_BUFFER_LIST_SIZE)
     {
       elem = malloc (sizeof (*elem));
