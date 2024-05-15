@@ -31,8 +31,6 @@ void fs_cache_init (void)
   lock_init (&buffer_lock);
   list_init (&buffer_list);
 
-  // TODO: Periodically write all dirty, cached blocks back to disk. (5.3.4 Buffer Cache)
-  // TODO: If needed, stop this thread.
   thread_create ("periodic-flush", PRI_DEFAULT, flush_periodically, NULL);
 }
 
@@ -50,6 +48,8 @@ void fs_cache_done (void)
       free (elem->buffer);
       free (elem);
     }
+
+  // TODO: If needed, stop the periodic-flush thread.
 }
 
 struct lock *fs_cache_get_lock (void)
@@ -131,9 +131,10 @@ void flush_periodically (void *aux UNUSED)
 
   while (true)
     {
-      timer_sleep (1000);
-      lock_acquire (&buffer_lock);
+      // Run every second.
+      timer_sleep (TIMER_FREQ);
 
+      lock_acquire (&buffer_lock);
 
       for (e = list_begin (&buffer_list); e != list_end (&buffer_list);
            e = list_next (e))
