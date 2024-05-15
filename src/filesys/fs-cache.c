@@ -31,8 +31,8 @@ struct fs_cache_elem
 struct fs_cache_elem *find_fs_cache_elem (block_sector_t sector_idx);
 struct fs_cache_elem *install_fs_cache_elem (block_sector_t sector_idx);
 
-void flush_periodically (void *aux UNUSED);
-void read_ahead (void *aux UNUSED);
+void periodic_flusher (void *aux UNUSED);
+void ahead_reader (void *aux UNUSED);
 
 void fs_cache_init (void)
 {
@@ -40,11 +40,11 @@ void fs_cache_init (void)
   list_init (&buffer_list);
   read_ahead_sector_idx = NO_READ_AHEAD_SECTOR_IDX;
 
-  thread_create ("periodic-flush", PRI_DEFAULT, flush_periodically, NULL);
+  thread_create ("fs-cache-flush", PRI_DEFAULT, periodic_flusher, NULL);
 
   enum intr_level old_level;
   old_level = intr_disable ();
-  tid_t read_ahead_tid = thread_create ("read-ahead", PRI_DEFAULT, read_ahead, NULL);
+  tid_t read_ahead_tid = thread_create ("fs-cache-read", PRI_DEFAULT, ahead_reader, NULL);
   read_ahead_thread = thread_find (read_ahead_tid);
   intr_set_level (old_level);
 }
@@ -64,7 +64,7 @@ void fs_cache_done (void)
       free (elem);
     }
 
-  // TODO: If needed, stop the periodic-flush thread.
+  // TODO: If needed, stop the periodic-flush and read-ahead threads.
 }
 
 struct lock *fs_cache_get_lock (void)
@@ -142,7 +142,7 @@ struct fs_cache_elem *install_fs_cache_elem (block_sector_t sector_idx)
   return elem;
 }
 
-void flush_periodically (void *aux UNUSED)
+void periodic_flusher (void *aux UNUSED)
 {
   struct list_elem *e;
 
@@ -165,7 +165,7 @@ void flush_periodically (void *aux UNUSED)
     }
 }
 
-void read_ahead (void *aux UNUSED)
+void ahead_reader (void *aux UNUSED)
 {
   while (true)
     {
