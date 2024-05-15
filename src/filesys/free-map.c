@@ -49,6 +49,58 @@ free_map_release (block_sector_t sector, size_t cnt)
   bitmap_write (free_map, free_map_file);
 }
 
+bool free_map_allocate_indexed (size_t cnt, block_sector_t *sectorp)
+{
+  int failed_index = -1;
+  for (size_t i = 0; i < cnt; i++)
+    {
+      block_sector_t sector = bitmap_scan_and_flip (free_map, 0, 1, false);
+      if (sector == BITMAP_ERROR)
+        {
+          failed_index = i;
+          break;
+        }
+      sectorp[i] = sector;
+    }
+  
+  /* Clean up when failed to find enough slots from the free_map. */
+  if (failed_index >= 0)
+    {
+      for (int i = 0; i < failed_index; i++)
+        {
+          bitmap_set(free_map, sectorp[i], false);
+          sectorp[i] = BITMAP_ERROR;
+        }
+
+      return false;
+    }
+  
+  /* Clean up when failed to write free_map to free_map_file. */
+  if (free_map_file != NULL && !bitmap_write (free_map, free_map_file))
+    {
+      for (size_t i = 0; i < cnt; i++)
+        {
+          bitmap_set(free_map, sectorp[i], false);
+          sectorp[i] = BITMAP_ERROR;
+        }
+
+      return false;
+    }
+  
+  return true;
+}
+
+void free_map_release_indexed (block_sector_t *sectorp, size_t cnt)
+{
+  for (size_t i = 0; i < cnt; i++)
+    ASSERT (bitmap_all (free_map, sectorp[i], 1));
+
+  for (size_t i = 0; i < cnt; i++)
+    bitmap_set (free_map, sectorp[i], false);
+
+  bitmap_write (free_map, free_map_file);
+}
+
 /* Opens the free map file and reads it from disk. */
 void
 free_map_open (void) 
