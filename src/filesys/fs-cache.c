@@ -3,6 +3,7 @@
 #include <string.h>
 #include "devices/timer.h"
 #include "filesys/filesys.h"
+#include "threads/interrupt.h"
 #include "threads/malloc.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
@@ -12,6 +13,12 @@
 
 static struct lock buffer_lock;
 static struct list buffer_list;
+
+/* Set to -1 when there is no sector to read. */
+#define NO_READ_AHEAD_SECTOR_IDX -1
+static int read_ahead_sector_idx;
+
+static struct thread *read_ahead_thread;
 
 struct fs_cache_elem
   {
@@ -25,13 +32,21 @@ struct fs_cache_elem *find_fs_cache_elem (block_sector_t sector_idx);
 struct fs_cache_elem *install_fs_cache_elem (block_sector_t sector_idx);
 
 void flush_periodically (void *aux UNUSED);
+void read_ahead (void *aux UNUSED);
 
 void fs_cache_init (void)
 {
   lock_init (&buffer_lock);
   list_init (&buffer_list);
+  read_ahead_sector_idx = NO_READ_AHEAD_SECTOR_IDX;
 
   thread_create ("periodic-flush", PRI_DEFAULT, flush_periodically, NULL);
+
+  enum intr_level old_level;
+  old_level = intr_disable ();
+  tid_t read_ahead_tid = thread_create ("read-ahead", PRI_DEFAULT, read_ahead, NULL);
+  read_ahead_thread = thread_find (read_ahead_tid);
+  intr_set_level (old_level);
 }
 
 void fs_cache_done (void)
@@ -73,6 +88,9 @@ void fs_cache_read (block_sector_t sector_idx)
 
   struct fs_cache_elem *elem = install_fs_cache_elem (sector_idx);
   block_read (fs_device, sector_idx, elem->buffer);
+
+  read_ahead_sector_idx = sector_idx + 1;
+  read_ahead_thread->priority = PRI_DEFAULT;
 }
 
 void fs_cache_write (block_sector_t sector_idx)
@@ -104,7 +122,6 @@ struct fs_cache_elem *install_fs_cache_elem (block_sector_t sector_idx)
 {
   struct fs_cache_elem *elem;
 
-  // TODO: Implement read-ahead. (5.3.4 Buffer Cache)
   if (list_size (&buffer_list) < MAX_BUFFER_LIST_SIZE)
     {
       elem = malloc (sizeof (*elem));
@@ -131,7 +148,7 @@ void flush_periodically (void *aux UNUSED)
 
   while (true)
     {
-      // Run every second.
+      /* Run every second. */
       timer_sleep (TIMER_FREQ);
 
       lock_acquire (&buffer_lock);
@@ -146,4 +163,26 @@ void flush_periodically (void *aux UNUSED)
 
       lock_release (&buffer_lock);
     }
+}
+
+void read_ahead (void *aux UNUSED)
+{
+  while (true)
+    {
+      lock_acquire (&buffer_lock);
+      if (read_ahead_sector_idx >= 0)
+        {
+          if (find_fs_cache_elem (read_ahead_sector_idx) == NULL)
+            {
+              struct fs_cache_elem *elem = install_fs_cache_elem (read_ahead_sector_idx);
+              block_read (fs_device, read_ahead_sector_idx, elem->buffer);
+            }
+          read_ahead_sector_idx = NO_READ_AHEAD_SECTOR_IDX;
+        }
+      lock_release (&buffer_lock);
+
+      thread_set_priority (PRI_MIN);
+      thread_yield ();
+    }
+
 }
