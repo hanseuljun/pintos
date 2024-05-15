@@ -1,9 +1,11 @@
 #include "fs-cache.h"
 #include <list.h>
 #include <string.h>
+#include "devices/timer.h"
 #include "filesys/filesys.h"
 #include "threads/malloc.h"
 #include "threads/synch.h"
+#include "threads/thread.h"
 
 /* From 5.3.4 Buffer Cache. */
 #define MAX_BUFFER_LIST_SIZE 64
@@ -22,12 +24,16 @@ struct fs_cache_elem
 struct fs_cache_elem *find_fs_cache_elem (block_sector_t sector_idx);
 struct fs_cache_elem *install_fs_cache_elem (block_sector_t sector_idx);
 
+void flush_periodically (void *aux UNUSED);
+
 void fs_cache_init (void)
 {
   lock_init (&buffer_lock);
   list_init (&buffer_list);
 
   // TODO: Periodically write all dirty, cached blocks back to disk. (5.3.4 Buffer Cache)
+  // TODO: If needed, stop this thread.
+  thread_create ("periodic-flush", PRI_DEFAULT, flush_periodically, NULL);
 }
 
 void fs_cache_done (void)
@@ -117,4 +123,26 @@ struct fs_cache_elem *install_fs_cache_elem (block_sector_t sector_idx)
     }
   list_push_back (&buffer_list, &elem->list_elem);
   return elem;
+}
+
+void flush_periodically (void *aux UNUSED)
+{
+  struct list_elem *e;
+
+  while (true)
+    {
+      timer_sleep (1000);
+      lock_acquire (&buffer_lock);
+
+
+      for (e = list_begin (&buffer_list); e != list_end (&buffer_list);
+           e = list_next (e))
+        {
+          struct fs_cache_elem *elem = list_entry (e, struct fs_cache_elem, list_elem);
+          if (elem->should_write)
+            block_write (fs_device, elem->sector_idx, elem->buffer);
+        }
+
+      lock_release (&buffer_lock);
+    }
 }
