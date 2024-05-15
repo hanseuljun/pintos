@@ -101,12 +101,8 @@ inode_create (block_sector_t sector, off_t length)
           disk_inode->sectors[i] = INODE_INVALID_SECTOR;
         disk_inode->length = length;
         disk_inode->magic = INODE_MAGIC;
-        block_sector_t start;
-        if (free_map_allocate (sectors, &start)) 
+        if (free_map_allocate (sectors, disk_inode->sectors)) 
           {
-            for (size_t i = 0; i < sectors; i++)
-              disk_inode->sectors[i] = start + i;
-
             memcpy (fs_cache_get_buffer (sector), disk_inode, BLOCK_SECTOR_SIZE);
             fs_cache_write (sector);
             if (sectors > 0) 
@@ -202,8 +198,8 @@ inode_close (struct inode *inode)
       if (inode->removed) 
         {
           size_t sectors = bytes_to_sectors (inode->data.length);
-          free_map_release (inode->sector, 1);
-          free_map_release (inode->data.sectors[0], sectors);
+          free_map_release (&inode->sector, 1);
+          free_map_release (inode->data.sectors, sectors);
         }
 
       free (inode); 
