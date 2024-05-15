@@ -9,6 +9,8 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 
+#define INODE_MAX_SECTOR_COUNT 126
+
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
@@ -93,24 +95,27 @@ inode_create (block_sector_t sector, off_t length)
   if (disk_inode != NULL)
     {
       size_t sectors = bytes_to_sectors (length);
-      disk_inode->length = length;
-      disk_inode->magic = INODE_MAGIC;
-      if (free_map_allocate (sectors, &disk_inode->start)) 
-        {
-          memcpy (fs_cache_get_buffer (sector), disk_inode, BLOCK_SECTOR_SIZE);
-          fs_cache_write (sector);
-          if (sectors > 0) 
-            {
-              size_t i;
-              
-              for (i = 0; i < sectors; i++)
-                {
-                  memset (fs_cache_get_buffer (disk_inode->start + i), 0, BLOCK_SECTOR_SIZE);
-                  fs_cache_write (disk_inode->start + i);
-                }
-            }
-          success = true; 
-        } 
+      if (sectors <= INODE_MAX_SECTOR_COUNT)
+      {
+        disk_inode->length = length;
+        disk_inode->magic = INODE_MAGIC;
+        if (free_map_allocate (sectors, &disk_inode->start)) 
+          {
+            memcpy (fs_cache_get_buffer (sector), disk_inode, BLOCK_SECTOR_SIZE);
+            fs_cache_write (sector);
+            if (sectors > 0) 
+              {
+                size_t i;
+                
+                for (i = 0; i < sectors; i++)
+                  {
+                    memset (fs_cache_get_buffer (disk_inode->start + i), 0, BLOCK_SECTOR_SIZE);
+                    fs_cache_write (disk_inode->start + i);
+                  }
+              }
+            success = true; 
+          } 
+      }
       free (disk_inode);
     }
   thread_creating_inode = TID_ERROR;
