@@ -117,6 +117,7 @@ inode_create (block_sector_t sector, off_t length)
     {
       size_t sector_count = bytes_to_sectors (length);
       direct_disk_inode->length = length;
+      direct_disk_inode->indirect_sector = INVALID_SECTOR;
       direct_disk_inode->magic = INODE_MAGIC;
 
       success = true;
@@ -137,12 +138,11 @@ inode_create (block_sector_t sector, off_t length)
             }
         }
 
-      block_sector_t indirect_sector = INVALID_SECTOR;
       if (indirect_sector_count > 0)
       {
         if (success)
           {
-            if (!free_map_allocate(1, &indirect_sector))
+            if (!free_map_allocate(1, &direct_disk_inode->indirect_sector))
               success = false;
           }
         if (success)
@@ -157,7 +157,6 @@ inode_create (block_sector_t sector, off_t length)
               }
           }
       }
-      direct_disk_inode->indirect_sector = indirect_sector;
 
       if (success) 
         {
@@ -170,10 +169,10 @@ inode_create (block_sector_t sector, off_t length)
               fs_cache_write (direct_disk_inode->sectors[i]);
             }
 
-          if (indirect_sector != INVALID_SECTOR)
+          if (direct_disk_inode->indirect_sector != INVALID_SECTOR)
             {
-              memcpy (fs_cache_get_buffer (indirect_sector), indirect_disk_inode, BLOCK_SECTOR_SIZE);
-              fs_cache_write (indirect_sector);
+              memcpy (fs_cache_get_buffer (direct_disk_inode->indirect_sector), indirect_disk_inode, BLOCK_SECTOR_SIZE);
+              fs_cache_write (direct_disk_inode->indirect_sector);
               for (size_t i = 0; i < indirect_sector_count; i++)
                 {
                   memset (fs_cache_get_buffer (indirect_disk_inode->sectors[i]), 0, BLOCK_SECTOR_SIZE);
