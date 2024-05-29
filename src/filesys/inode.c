@@ -11,7 +11,7 @@
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
-// #define INODE_DISK_MAX_SECTOR_COUNT 118
+#define INODE_DISK_MAX_SECTOR_COUNT 118
 
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
@@ -85,7 +85,7 @@ inode_create (block_sector_t sector, off_t length)
   ASSERT (length >= 0);
   // TODO: Remove following ASSERT check when the indexed inode is
   // properly implemented.
-  // ASSERT (length < (BLOCK_SECTOR_SIZE * INODE_DISK_MAX_SECTOR_COUNT));
+  ASSERT (length < (BLOCK_SECTOR_SIZE * INODE_DISK_MAX_SECTOR_COUNT));
 
   /* If this assertion fails, the inode structure is not exactly
      one sector in size, and you should fix that. */
