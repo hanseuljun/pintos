@@ -115,20 +115,20 @@ inode_create (block_sector_t sector, off_t length)
   thread_creating_inode = thread_tid ();
   if (disk_inode != NULL)
     {
-      size_t sectors = bytes_to_sectors (length);
+      size_t sector_count = bytes_to_sectors (length);
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
 
       success = true;
-      size_t direct_sectors = sectors;
-      size_t indirect_sectors = 0;
-      if (direct_sectors > INODE_DISK_MAX_SECTOR_COUNT)
+      size_t direct_sector_count = sector_count;
+      size_t indirect_sector_count = 0;
+      if (direct_sector_count > INODE_DISK_MAX_SECTOR_COUNT)
         {
-          direct_sectors = INODE_DISK_MAX_SECTOR_COUNT;
-          indirect_sectors = sectors - INODE_DISK_MAX_SECTOR_COUNT;
+          direct_sector_count = INODE_DISK_MAX_SECTOR_COUNT;
+          indirect_sector_count = sector_count - INODE_DISK_MAX_SECTOR_COUNT;
         }
 
-      for (size_t i = 0; i < direct_sectors; i++)
+      for (size_t i = 0; i < direct_sector_count; i++)
         {
           if (!free_map_allocate(1, &disk_inode->sectors[i]))
             {
@@ -138,7 +138,7 @@ inode_create (block_sector_t sector, off_t length)
         }
 
       block_sector_t indirect_sector = INVALID_SECTOR;
-      if (indirect_sectors > 0)
+      if (indirect_sector_count > 0)
       {
         if (success)
           {
@@ -147,7 +147,7 @@ inode_create (block_sector_t sector, off_t length)
           }
         if (success)
           {
-            for (size_t i = 0; i < indirect_sectors; i++)
+            for (size_t i = 0; i < indirect_sector_count; i++)
               {
                 if (!free_map_allocate(1, &indirect_disk_inode->sectors[i]))
                   {
@@ -164,7 +164,7 @@ inode_create (block_sector_t sector, off_t length)
           memcpy (fs_cache_get_buffer (sector), disk_inode, BLOCK_SECTOR_SIZE);
           fs_cache_write (sector);
 
-          for (size_t i = 0; i < direct_sectors; i++)
+          for (size_t i = 0; i < direct_sector_count; i++)
             {
               memset (fs_cache_get_buffer (disk_inode->sectors[i]), 0, BLOCK_SECTOR_SIZE);
               fs_cache_write (disk_inode->sectors[i]);
@@ -174,7 +174,7 @@ inode_create (block_sector_t sector, off_t length)
             {
               memcpy (fs_cache_get_buffer (indirect_sector), indirect_disk_inode, BLOCK_SECTOR_SIZE);
               fs_cache_write (indirect_sector);
-              for (size_t i = 0; i < indirect_sectors; i++)
+              for (size_t i = 0; i < indirect_sector_count; i++)
                 {
                   memset (fs_cache_get_buffer (indirect_disk_inode->sectors[i]), 0, BLOCK_SECTOR_SIZE);
                   fs_cache_write (indirect_disk_inode->sectors[i]);
@@ -267,19 +267,19 @@ inode_close (struct inode *inode)
       /* Deallocate blocks if removed. */
       if (inode->removed) 
         {
-          size_t sectors = bytes_to_sectors (inode->data.length);
+          size_t sector_count = bytes_to_sectors (inode->data.length);
           free_map_release (inode->sector, 1);
 
-          size_t direct_sectors = sectors;
-          size_t indirect_sectors = 0;
-          if (direct_sectors > INODE_DISK_MAX_SECTOR_COUNT)
+          size_t direct_sector_count = sector_count;
+          size_t indirect_sector_count = 0;
+          if (direct_sector_count > INODE_DISK_MAX_SECTOR_COUNT)
             {
-              direct_sectors = INODE_DISK_MAX_SECTOR_COUNT;
-              indirect_sectors = sectors - INODE_DISK_MAX_SECTOR_COUNT;
+              direct_sector_count = INODE_DISK_MAX_SECTOR_COUNT;
+              indirect_sector_count = sector_count - INODE_DISK_MAX_SECTOR_COUNT;
             }
-          for (size_t i = 0; i < direct_sectors; i++)
+          for (size_t i = 0; i < direct_sector_count; i++)
             free_map_release (inode->data.sectors[i], 1);
-          for (size_t i = 0; i < indirect_sectors; i++)
+          for (size_t i = 0; i < indirect_sector_count; i++)
             free_map_release (inode->indirect_data.sectors[i], 1);
         }
 
