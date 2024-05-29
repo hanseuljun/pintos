@@ -48,8 +48,8 @@ struct inode
     int open_cnt;                       /* Number of openers. */
     bool removed;                       /* True if deleted, false otherwise. */
     int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
-    struct direct_inode_disk direct_data;  /* Inode content. */
-    struct indirect_inode_disk indirect_data;
+    struct direct_inode_disk direct_inode_disk;  /* Inode content. */
+    struct indirect_inode_disk indirect_inode_disk;
   };
 
 /* Returns the block device sector that contains byte offset POS
@@ -60,13 +60,13 @@ static block_sector_t
 byte_to_sector (const struct inode *inode, off_t pos) 
 {
   ASSERT (inode != NULL);
-  if (pos < inode->direct_data.length)
+  if (pos < inode->direct_inode_disk.length)
     {
       size_t index = pos / BLOCK_SECTOR_SIZE;
       if (index < INODE_DISK_MAX_SECTOR_COUNT)
-        return inode->direct_data.sectors[index];
+        return inode->direct_inode_disk.sectors[index];
       else
-        return inode->indirect_data.sectors[index - INODE_DISK_MAX_SECTOR_COUNT];
+        return inode->indirect_inode_disk.sectors[index - INODE_DISK_MAX_SECTOR_COUNT];
     }
   else
     return -1;
@@ -225,9 +225,9 @@ inode_open (block_sector_t sector)
   inode->removed = false;
   lock_acquire (fs_cache_get_lock ());
   fs_cache_read (inode->sector);
-  memcpy (&inode->direct_data, fs_cache_get_buffer (inode->sector), BLOCK_SECTOR_SIZE);
-  if (inode->direct_data.indirect_sector != INVALID_SECTOR)
-    memcpy (&inode->indirect_data, fs_cache_get_buffer (inode->direct_data.indirect_sector), BLOCK_SECTOR_SIZE);
+  memcpy (&inode->direct_inode_disk, fs_cache_get_buffer (inode->sector), BLOCK_SECTOR_SIZE);
+  if (inode->direct_inode_disk.indirect_sector != INVALID_SECTOR)
+    memcpy (&inode->indirect_inode_disk, fs_cache_get_buffer (inode->direct_inode_disk.indirect_sector), BLOCK_SECTOR_SIZE);
   lock_release (fs_cache_get_lock ());
   return inode;
 }
@@ -267,7 +267,7 @@ inode_close (struct inode *inode)
       /* Deallocate blocks if removed. */
       if (inode->removed) 
         {
-          size_t sector_count = bytes_to_sectors (inode->direct_data.length);
+          size_t sector_count = bytes_to_sectors (inode->direct_inode_disk.length);
           free_map_release (inode->sector, 1);
 
           size_t direct_sector_count = sector_count;
@@ -278,9 +278,9 @@ inode_close (struct inode *inode)
               indirect_sector_count = sector_count - INODE_DISK_MAX_SECTOR_COUNT;
             }
           for (size_t i = 0; i < direct_sector_count; i++)
-            free_map_release (inode->direct_data.sectors[i], 1);
+            free_map_release (inode->direct_inode_disk.sectors[i], 1);
           for (size_t i = 0; i < indirect_sector_count; i++)
-            free_map_release (inode->indirect_data.sectors[i], 1);
+            free_map_release (inode->indirect_inode_disk.sectors[i], 1);
         }
 
       free (inode); 
@@ -413,5 +413,5 @@ inode_allow_write (struct inode *inode)
 off_t
 inode_length (const struct inode *inode)
 {
-  return inode->direct_data.length;
+  return inode->direct_inode_disk.length;
 }
