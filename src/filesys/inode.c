@@ -17,10 +17,10 @@
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk
   {
-    block_sector_t start;               /* First data sector. */
+    block_sector_t sectors[INODE_DISK_MAX_SECTOR_COUNT];  /* First data sector. */
     off_t length;                       /* File size in bytes. */
     unsigned magic;                     /* Magic number. */
-    uint32_t unused[125];               /* Not used. */
+    uint32_t unused[8];                 /* Not used. */
   };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -51,7 +51,7 @@ byte_to_sector (const struct inode *inode, off_t pos)
 {
   ASSERT (inode != NULL);
   if (pos < inode->data.length)
-    return inode->data.start + pos / BLOCK_SECTOR_SIZE;
+    return inode->data.sectors[0] + pos / BLOCK_SECTOR_SIZE;
   else
     return -1;
 }
@@ -99,7 +99,7 @@ inode_create (block_sector_t sector, off_t length)
       size_t sectors = bytes_to_sectors (length);
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
-      if (free_map_allocate (sectors, &disk_inode->start)) 
+      if (free_map_allocate (sectors, &disk_inode->sectors[0])) 
         {
           memcpy (fs_cache_get_buffer (sector), disk_inode, BLOCK_SECTOR_SIZE);
           fs_cache_write (sector);
@@ -109,8 +109,8 @@ inode_create (block_sector_t sector, off_t length)
               
               for (i = 0; i < sectors; i++)
                 {
-                  memset (fs_cache_get_buffer (disk_inode->start + i), 0, BLOCK_SECTOR_SIZE);
-                  fs_cache_write (disk_inode->start + i);
+                  memset (fs_cache_get_buffer (disk_inode->sectors[0] + i), 0, BLOCK_SECTOR_SIZE);
+                  fs_cache_write (disk_inode->sectors[0] + i);
                 }
             }
           success = true; 
@@ -198,7 +198,7 @@ inode_close (struct inode *inode)
         {
           size_t sectors = bytes_to_sectors (inode->data.length);
           free_map_release (inode->sector, 1);
-          free_map_release (inode->data.start, sectors);
+          free_map_release (inode->data.sectors[0], sectors);
         }
 
       free (inode); 
