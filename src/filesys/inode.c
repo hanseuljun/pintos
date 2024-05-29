@@ -51,7 +51,7 @@ byte_to_sector (const struct inode *inode, off_t pos)
 {
   ASSERT (inode != NULL);
   if (pos < inode->data.length)
-    return inode->data.sectors[0] + pos / BLOCK_SECTOR_SIZE;
+    return inode->data.sectors[pos / BLOCK_SECTOR_SIZE];
   else
     return -1;
 }
@@ -101,18 +101,18 @@ inode_create (block_sector_t sector, off_t length)
       disk_inode->magic = INODE_MAGIC;
       if (free_map_allocate (sectors, &disk_inode->sectors[0])) 
         {
+          for (size_t i = 0; i < sectors; i++)
+            disk_inode->sectors[i] = disk_inode->sectors[0] + i;
+
           memcpy (fs_cache_get_buffer (sector), disk_inode, BLOCK_SECTOR_SIZE);
           fs_cache_write (sector);
-          if (sectors > 0) 
+
+          for (size_t i = 0; i < sectors; i++)
             {
-              size_t i;
-              
-              for (i = 0; i < sectors; i++)
-                {
-                  memset (fs_cache_get_buffer (disk_inode->sectors[0] + i), 0, BLOCK_SECTOR_SIZE);
-                  fs_cache_write (disk_inode->sectors[0] + i);
-                }
+              memset (fs_cache_get_buffer (disk_inode->sectors[i]), 0, BLOCK_SECTOR_SIZE);
+              fs_cache_write (disk_inode->sectors[i]);
             }
+
           success = true; 
         } 
       free (disk_inode);
