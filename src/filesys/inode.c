@@ -99,11 +99,19 @@ inode_create (block_sector_t sector, off_t length)
       size_t sectors = bytes_to_sectors (length);
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
-      if (free_map_allocate (sectors, &disk_inode->sectors[0])) 
-        {
-          for (size_t i = 0; i < sectors; i++)
-            disk_inode->sectors[i] = disk_inode->sectors[0] + i;
 
+      success = true;
+      for (size_t i = 0; i < sectors; i++)
+        {
+          if (!free_map_allocate(1, &disk_inode->sectors[i]))
+            {
+              success = false;
+              break;
+            }
+        }
+
+      if (success) 
+        {
           memcpy (fs_cache_get_buffer (sector), disk_inode, BLOCK_SECTOR_SIZE);
           fs_cache_write (sector);
 
@@ -114,7 +122,7 @@ inode_create (block_sector_t sector, off_t length)
             }
 
           success = true; 
-        } 
+        }
       free (disk_inode);
     }
   thread_creating_inode = TID_ERROR;
