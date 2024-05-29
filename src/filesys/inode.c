@@ -198,7 +198,8 @@ inode_close (struct inode *inode)
         {
           size_t sectors = bytes_to_sectors (inode->data.length);
           free_map_release (inode->sector, 1);
-          free_map_release (inode->data.sectors[0], sectors);
+          for (size_t i = 0; i < sectors; i++)
+            free_map_release (inode->data.sectors[i], 1);
         }
 
       free (inode); 
