@@ -172,6 +172,34 @@ inode_data_release (struct inode_data *inode_data)
     free_map_release (inode_data->indirect_inode_disk.sectors[i], 1);
 }
 
+bool
+inode_data_extend (struct inode_data *inode_data, off_t length)
+{
+  size_t current_length = inode_data->direct_inode_disk.length;
+  size_t target_length = current_length + length;
+
+  struct inode_sector_counts current_sector_counts = bytes_to_sector_counts (current_length);
+  struct inode_sector_counts target_sector_counts = bytes_to_sector_counts (target_length);
+
+  if (target_sector_counts.direct_sector_count == current_sector_counts.direct_sector_count + 1)
+    {
+      block_sector_t sector;
+      if (!free_map_allocate(1, &sector))
+        return false;
+
+      inode_data->direct_inode_disk.sectors[current_sector_counts.direct_sector_count] = sector;
+      memset (fs_cache_get_buffer (sector), 0, BLOCK_SECTOR_SIZE);
+      fs_cache_write (sector);
+      inode_data->direct_inode_disk.length += length;
+      
+      return true;
+    }
+
+  // TODO: Implement other cases.
+
+  return false;
+}
+
 off_t
 inode_data_length (const struct inode_data *inode_data)
 {

@@ -25,14 +25,16 @@ struct inode
 static struct list open_inodes;
 
 /* A temporary variable to prevent crashing while creating inodes. */
-static tid_t thread_creating_inode;
+static tid_t inode_creating_thread;
+static tid_t inode_data_extending_thread;
 
 /* Initializes the inode module. */
 void
 inode_init (void)
 {
   list_init (&open_inodes);
-  thread_creating_inode = TID_ERROR;
+  inode_creating_thread = TID_ERROR;
+  inode_data_extending_thread = TID_ERROR;
 }
 
 /* Initializes an inode with LENGTH bytes of data and
@@ -48,9 +50,9 @@ inode_create (block_sector_t sector, off_t length)
   ASSERT (length >= 0);
 
   lock_acquire (fs_cache_get_lock ());
-  thread_creating_inode = thread_tid ();
+  inode_creating_thread = thread_tid ();
   success = inode_data_create (sector, length);
-  thread_creating_inode = TID_ERROR;
+  inode_creating_thread = TID_ERROR;
   lock_release (fs_cache_get_lock ());
   return success;
 }
@@ -209,8 +211,17 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   if (inode->deny_write_cnt)
     return 0;
 
-  if (thread_creating_inode != thread_tid ())
+  bool rightfully_already_locked = inode_creating_thread == thread_tid () || inode_data_extending_thread == thread_tid ();
+  if (!rightfully_already_locked)
     lock_acquire (fs_cache_get_lock ());
+
+  if (inode_length (inode) < (offset + size))
+    {
+      inode_data_extending_thread = thread_tid ();
+      inode_data_extend (inode->data, offset + size - inode_length (inode));
+      inode_data_extending_thread = TID_ERROR;
+    }
+
   while (size > 0) 
     {
       /* Sector to write, starting byte offset within sector. */
@@ -220,6 +231,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       /* Bytes left in inode, bytes left in sector, lesser of the two. */
       off_t inode_left = inode_length (inode) - offset;
       int sector_left = BLOCK_SECTOR_SIZE - sector_ofs;
+
       int min_left = inode_left < sector_left ? inode_left : sector_left;
 
       /* Number of bytes to actually write into this sector. */
@@ -242,7 +254,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       offset += chunk_size;
       bytes_written += chunk_size;
     }
-  if (thread_creating_inode != thread_tid ())
+  if (!rightfully_already_locked)
     lock_release (fs_cache_get_lock ());
 
   return bytes_written;
