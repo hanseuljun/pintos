@@ -2,10 +2,12 @@
 #include <round.h>
 #include <string.h>
 #include "filesys/fs-cache.h"
+#include "filesys/free-map.h"
 #include "threads/malloc.h"
 #include "threads/synch.h"
 
-struct inode_data *inode_data_open (block_sector_t sector)
+struct inode_data *
+inode_data_open (block_sector_t sector)
 {
   struct inode_data *inode_data = malloc (sizeof *inode_data);
   if (inode_data == NULL)
@@ -19,6 +21,17 @@ struct inode_data *inode_data_open (block_sector_t sector)
   lock_release (fs_cache_get_lock ());
 
   return inode_data;
+}
+
+void
+inode_data_release (struct inode_data *inode_data)
+{
+  struct inode_sector_counts sector_counts = bytes_to_sector_counts (inode_data->direct_inode_disk.length);
+
+  for (size_t i = 0; i < sector_counts.direct_sector_count; i++)
+    free_map_release (inode_data->direct_inode_disk.sectors[i], 1);
+  for (size_t i = 0; i < sector_counts.indirect_sector_count; i++)
+    free_map_release (inode_data->indirect_inode_disk.sectors[i], 1);
 }
 
 struct inode_sector_counts

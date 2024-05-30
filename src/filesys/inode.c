@@ -226,13 +226,8 @@ inode_close (struct inode *inode)
       /* Deallocate blocks if removed. */
       if (inode->removed) 
         {
-          struct inode_sector_counts sector_counts = bytes_to_sector_counts (inode->data->direct_inode_disk.length);
           free_map_release (inode->sector, 1);
-
-          for (size_t i = 0; i < sector_counts.direct_sector_count; i++)
-            free_map_release (inode->data->direct_inode_disk.sectors[i], 1);
-          for (size_t i = 0; i < sector_counts.indirect_sector_count; i++)
-            free_map_release (inode->data->indirect_inode_disk.sectors[i], 1);
+          inode_data_release (inode->data);
         }
 
       free (inode->data);

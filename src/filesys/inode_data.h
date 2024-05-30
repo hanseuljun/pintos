@@ -40,6 +40,7 @@ struct inode_data
   };
 
 struct inode_data *inode_data_open (block_sector_t sector);
+void inode_data_release (struct inode_data *inode_data);
 
 /* Returns the number of sectors to allocate for an inode SIZE
    bytes long. */
