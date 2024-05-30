@@ -39,4 +39,8 @@ struct inode_data
     struct indirect_inode_disk indirect_inode_disk;
   };
 
+/* Returns the number of sectors to allocate for an inode SIZE
+   bytes long. */
+struct inode_sector_counts bytes_to_sector_counts (off_t size);
+
 #endif /* filesys/inode_data.h */

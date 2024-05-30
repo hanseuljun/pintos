@@ -1,7 +1,6 @@
 #include "filesys/inode.h"
 #include <list.h>
 #include <debug.h>
-#include <round.h>
 #include <string.h>
 #include "filesys/fs-cache.h"
 #include "filesys/free-map.h"
@@ -9,26 +8,6 @@
 #include "threads/malloc.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-
-/* Returns the number of sectors to allocate for an inode SIZE
-   bytes long. */
-static inline struct inode_sector_counts
-bytes_to_sector_counts (off_t size)
-{
-  size_t sector_count = DIV_ROUND_UP (size, BLOCK_SECTOR_SIZE);
-  struct inode_sector_counts sector_counts;
-  if (sector_count < INODE_DISK_MAX_SECTOR_COUNT)
-    {
-      sector_counts.direct_sector_count = sector_count;
-      sector_counts.indirect_sector_count = 0;
-    }
-  else
-    {
-      sector_counts.direct_sector_count = INODE_DISK_MAX_SECTOR_COUNT;
-      sector_counts.indirect_sector_count = sector_count - INODE_DISK_MAX_SECTOR_COUNT;
-    }
-  return sector_counts;
-}
 
 /* In-memory inode. */
 struct inode 
@@ -197,25 +176,27 @@ inode_open (block_sector_t sector)
   if (inode == NULL)
     return NULL;
 
+  /* Initialize. */
+  inode->sector = sector;
+  inode->open_cnt = 1;
+  inode->deny_write_cnt = 0;
+  inode->removed = false;
+
   inode->data = malloc (sizeof *inode->data);
   if (inode->data == NULL)
     {
       free(inode);
       return NULL;
     }
-
-  /* Initialize. */
-  list_push_front (&open_inodes, &inode->elem);
-  inode->sector = sector;
-  inode->open_cnt = 1;
-  inode->deny_write_cnt = 0;
-  inode->removed = false;
   lock_acquire (fs_cache_get_lock ());
   fs_cache_read (inode->sector);
   memcpy (&inode->data->direct_inode_disk, fs_cache_get_buffer (inode->sector), BLOCK_SECTOR_SIZE);
   if (inode->data->direct_inode_disk.indirect_sector != INVALID_SECTOR)
     memcpy (&inode->data->indirect_inode_disk, fs_cache_get_buffer (inode->data->direct_inode_disk.indirect_sector), BLOCK_SECTOR_SIZE);
   lock_release (fs_cache_get_lock ());
+
+  list_push_front (&open_inodes, &inode->elem);
+
   return inode;
 }
 
