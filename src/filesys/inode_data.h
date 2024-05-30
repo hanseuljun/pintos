@@ -1,6 +1,9 @@
 #ifndef FILESYS_INODE_DATA_H
 #define FILESYS_INODE_DATA_H
 
+#include "devices/block.h"
+#include "filesys/off_t.h"
+
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 #define INODE_DISK_MAX_SECTOR_COUNT 118
