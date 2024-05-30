@@ -46,9 +46,6 @@ inode_create (block_sector_t sector, off_t length)
   bool success;
 
   ASSERT (length >= 0);
-  // TODO: Remove following ASSERT check when the indexed inode is
-  // properly implemented.
-  ASSERT (length < (BLOCK_SECTOR_SIZE * INODE_DISK_MAX_SECTOR_COUNT * 2));
 
   lock_acquire (fs_cache_get_lock ());
   thread_creating_inode = thread_tid ();

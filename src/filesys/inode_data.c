@@ -6,10 +6,69 @@
 #include "threads/malloc.h"
 #include "threads/synch.h"
 
+/* Identifies an inode. */
+#define INODE_MAGIC 0x494e4f44
+#define INODE_DISK_MAX_SECTOR_COUNT 118
+#define INVALID_SECTOR UINT32_MAX
+
+/* On-disk inode.
+   Must be exactly BLOCK_SECTOR_SIZE bytes long. */
+struct direct_inode_disk
+  {
+    block_sector_t sectors[INODE_DISK_MAX_SECTOR_COUNT];  /* First data sector. */
+    off_t length;                       /* File size in bytes. */
+    block_sector_t indirect_sector;
+    unsigned magic;                     /* Magic number. */
+    uint32_t unused[7];                 /* Not used. */
+  };
+
+struct indirect_inode_disk
+  {
+    block_sector_t sectors[INODE_DISK_MAX_SECTOR_COUNT];  /* First data sector. */
+    unsigned magic;                     /* Magic number. */
+    uint32_t unused[9];                 /* Not used. */
+  };
+
+struct inode_data
+  {
+    struct direct_inode_disk direct_inode_disk;
+    struct indirect_inode_disk indirect_inode_disk;
+  };
+
+struct inode_sector_counts
+  {
+    size_t direct_sector_count;
+    size_t indirect_sector_count;
+  };
+
+/* Returns the number of sectors to allocate for an inode SIZE
+   bytes long. */
+static inline struct inode_sector_counts
+bytes_to_sector_counts (off_t size)
+{
+  size_t sector_count = DIV_ROUND_UP (size, BLOCK_SECTOR_SIZE);
+  struct inode_sector_counts sector_counts;
+  if (sector_count < INODE_DISK_MAX_SECTOR_COUNT)
+    {
+      sector_counts.direct_sector_count = sector_count;
+      sector_counts.indirect_sector_count = 0;
+    }
+  else
+    {
+      sector_counts.direct_sector_count = INODE_DISK_MAX_SECTOR_COUNT;
+      sector_counts.indirect_sector_count = sector_count - INODE_DISK_MAX_SECTOR_COUNT;
+    }
+  return sector_counts;
+}
+
 bool
 inode_data_create (block_sector_t sector, off_t length)
 {
   ASSERT (lock_held_by_current_thread (fs_cache_get_lock ()));
+
+  // TODO: Remove following ASSERT check when the indexed inode is
+  // properly implemented.
+  ASSERT (length < (BLOCK_SECTOR_SIZE * INODE_DISK_MAX_SECTOR_COUNT * 2));
 
   bool success = false;
   struct inode_data *inode_data = calloc (1, sizeof *inode_data);
@@ -117,24 +176,6 @@ off_t
 inode_data_length (const struct inode_data *inode_data)
 {
   return inode_data->direct_inode_disk.length;
-}
-
-struct inode_sector_counts
-bytes_to_sector_counts (off_t size)
-{
-  size_t sector_count = DIV_ROUND_UP (size, BLOCK_SECTOR_SIZE);
-  struct inode_sector_counts sector_counts;
-  if (sector_count < INODE_DISK_MAX_SECTOR_COUNT)
-    {
-      sector_counts.direct_sector_count = sector_count;
-      sector_counts.indirect_sector_count = 0;
-    }
-  else
-    {
-      sector_counts.direct_sector_count = INODE_DISK_MAX_SECTOR_COUNT;
-      sector_counts.indirect_sector_count = sector_count - INODE_DISK_MAX_SECTOR_COUNT;
-    }
-  return sector_counts;
 }
 
 block_sector_t
