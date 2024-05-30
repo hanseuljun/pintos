@@ -43,86 +43,16 @@ inode_init (void)
 bool
 inode_create (block_sector_t sector, off_t length)
 {
-  struct inode_data *inode_data = NULL;
-  bool success = false;
+  bool success;
 
   ASSERT (length >= 0);
   // TODO: Remove following ASSERT check when the indexed inode is
   // properly implemented.
   ASSERT (length < (BLOCK_SECTOR_SIZE * INODE_DISK_MAX_SECTOR_COUNT * 2));
 
-  inode_data = calloc (1, sizeof *inode_data);
-
-  /* If this assertion fails, the inode structure is not exactly
-     one sector in size, and you should fix that. */
-  ASSERT (sizeof inode_data->direct_inode_disk == BLOCK_SECTOR_SIZE);
-  ASSERT (sizeof inode_data->indirect_inode_disk == BLOCK_SECTOR_SIZE);
-
   lock_acquire (fs_cache_get_lock ());
   thread_creating_inode = thread_tid ();
-  if (inode_data != NULL)
-    {
-      struct inode_sector_counts sector_counts = bytes_to_sector_counts (length);
-      inode_data->direct_inode_disk.length = length;
-      inode_data->direct_inode_disk.indirect_sector = INVALID_SECTOR;
-      inode_data->direct_inode_disk.magic = INODE_MAGIC;
-
-      success = true;
-      for (size_t i = 0; i < sector_counts.direct_sector_count; i++)
-        {
-          if (!free_map_allocate(1, &inode_data->direct_inode_disk.sectors[i]))
-            {
-              success = false;
-              break;
-            }
-        }
-
-      if (sector_counts.indirect_sector_count > 0)
-      {
-        if (success)
-          {
-            if (!free_map_allocate(1, &inode_data->direct_inode_disk.indirect_sector))
-              success = false;
-          }
-        if (success)
-          {
-            for (size_t i = 0; i < sector_counts.indirect_sector_count; i++)
-              {
-                if (!free_map_allocate(1, &inode_data->indirect_inode_disk.sectors[i]))
-                  {
-                    success = false;
-                    break;
-                  }
-              }
-          }
-      }
-
-      if (success) 
-        {
-          memcpy (fs_cache_get_buffer (sector), &inode_data->direct_inode_disk, BLOCK_SECTOR_SIZE);
-          fs_cache_write (sector);
-
-          for (size_t i = 0; i < sector_counts.direct_sector_count; i++)
-            {
-              memset (fs_cache_get_buffer (inode_data->direct_inode_disk.sectors[i]), 0, BLOCK_SECTOR_SIZE);
-              fs_cache_write (inode_data->direct_inode_disk.sectors[i]);
-            }
-
-          if (inode_data->direct_inode_disk.indirect_sector != INVALID_SECTOR)
-            {
-              memcpy (fs_cache_get_buffer (inode_data->direct_inode_disk.indirect_sector), &inode_data->indirect_inode_disk, BLOCK_SECTOR_SIZE);
-              fs_cache_write (inode_data->direct_inode_disk.indirect_sector);
-              for (size_t i = 0; i < sector_counts.indirect_sector_count; i++)
-                {
-                  memset (fs_cache_get_buffer (inode_data->indirect_inode_disk.sectors[i]), 0, BLOCK_SECTOR_SIZE);
-                  fs_cache_write (inode_data->indirect_inode_disk.sectors[i]);
-                }
-            }
-
-          success = true; 
-        }
-      free (inode_data);
-    }
+  success = inode_data_create (sector, length);
   thread_creating_inode = TID_ERROR;
   lock_release (fs_cache_get_lock ());
   return success;
@@ -345,5 +275,5 @@ inode_allow_write (struct inode *inode)
 off_t
 inode_length (const struct inode *inode)
 {
-  return inode->data->direct_inode_disk.length;
+  return inode_data_length (inode->data);
 }

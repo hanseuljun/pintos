@@ -2,6 +2,7 @@
 #define FILESYS_INODE_DATA_H
 
 #include "devices/block.h"
+#include <stdbool.h>
 #include "filesys/off_t.h"
 
 /* Identifies an inode. */
@@ -39,8 +40,10 @@ struct inode_data
     struct indirect_inode_disk indirect_inode_disk;
   };
 
+bool inode_data_create (block_sector_t sector, off_t length);
 struct inode_data *inode_data_open (block_sector_t sector);
 void inode_data_release (struct inode_data *inode_data);
+off_t inode_data_length (const struct inode_data *inode_data);
 
 /* Returns the number of sectors to allocate for an inode SIZE
    bytes long. */
