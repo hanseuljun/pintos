@@ -61,6 +61,8 @@ bytes_to_sector_counts (off_t size)
   return sector_counts;
 }
 
+bool allocate_inode_data_disks (struct inode_data *inode_data, off_t length);
+
 bool
 inode_data_create (block_sector_t sector, off_t length)
 {
@@ -80,44 +82,16 @@ inode_data_create (block_sector_t sector, off_t length)
 
   if (inode_data != NULL)
     {
-      struct inode_sector_counts sector_counts = bytes_to_sector_counts (length);
       inode_data->direct_inode_disk.length = length;
       inode_data->direct_inode_disk.indirect_sector = INVALID_SECTOR;
       inode_data->direct_inode_disk.magic = INODE_MAGIC;
       inode_data->indirect_inode_disk.magic = INODE_MAGIC;
 
-      success = true;
-      for (size_t i = 0; i < sector_counts.direct_sector_count; i++)
-        {
-          if (!free_map_allocate(1, &inode_data->direct_inode_disk.sectors[i]))
-            {
-              success = false;
-              break;
-            }
-        }
-
-      if (sector_counts.indirect_sector_count > 0)
-      {
-        if (success)
-          {
-            if (!free_map_allocate(1, &inode_data->direct_inode_disk.indirect_sector))
-              success = false;
-          }
-        if (success)
-          {
-            for (size_t i = 0; i < sector_counts.indirect_sector_count; i++)
-              {
-                if (!free_map_allocate(1, &inode_data->indirect_inode_disk.sectors[i]))
-                  {
-                    success = false;
-                    break;
-                  }
-              }
-          }
-      }
+      success = allocate_inode_data_disks (inode_data, length);
 
       if (success) 
         {
+          struct inode_sector_counts sector_counts = bytes_to_sector_counts (length);
           memcpy (fs_cache_get_buffer (sector), &inode_data->direct_inode_disk, BLOCK_SECTOR_SIZE);
           fs_cache_write (sector);
 
@@ -143,6 +117,35 @@ inode_data_create (block_sector_t sector, off_t length)
       free (inode_data);
     }
   return success;
+}
+
+bool allocate_inode_data_disks (struct inode_data *inode_data, off_t length)
+{
+  struct inode_sector_counts sector_counts = bytes_to_sector_counts (length);
+  inode_data->direct_inode_disk.length = length;
+  inode_data->direct_inode_disk.indirect_sector = INVALID_SECTOR;
+  inode_data->direct_inode_disk.magic = INODE_MAGIC;
+  inode_data->indirect_inode_disk.magic = INODE_MAGIC;
+
+  for (size_t i = 0; i < sector_counts.direct_sector_count; i++)
+    {
+      if (!free_map_allocate(1, &inode_data->direct_inode_disk.sectors[i]))
+        return false;
+    }
+
+  if (sector_counts.indirect_sector_count > 0)
+    {
+      if (!free_map_allocate(1, &inode_data->direct_inode_disk.indirect_sector))
+        return false;
+
+      for (size_t i = 0; i < sector_counts.indirect_sector_count; i++)
+        {
+          if (!free_map_allocate(1, &inode_data->indirect_inode_disk.sectors[i]))
+            return false;
+        }
+    }
+
+  return true;
 }
 
 struct inode_data *
