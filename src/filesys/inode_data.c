@@ -1,4 +1,5 @@
 #include "filesys/inode_data.h"
+#include <math.h>
 #include <round.h>
 #include <string.h>
 #include "filesys/fs-cache.h"
@@ -41,6 +42,7 @@ struct inode_sector_counts
   {
     size_t direct_sector_count;
     size_t indirect_sector_count;
+    size_t doubly_indirect_sector_count;
   };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -48,18 +50,15 @@ struct inode_sector_counts
 static inline struct inode_sector_counts
 bytes_to_sector_counts (off_t size)
 {
-  size_t sector_count = DIV_ROUND_UP (size, BLOCK_SECTOR_SIZE);
+  size_t left_sector_count = DIV_ROUND_UP (size, BLOCK_SECTOR_SIZE);
+
   struct inode_sector_counts sector_counts;
-  if (sector_count < INODE_DISK_MAX_SECTOR_COUNT)
-    {
-      sector_counts.direct_sector_count = sector_count;
-      sector_counts.indirect_sector_count = 0;
-    }
-  else
-    {
-      sector_counts.direct_sector_count = INODE_DISK_MAX_SECTOR_COUNT;
-      sector_counts.indirect_sector_count = sector_count - INODE_DISK_MAX_SECTOR_COUNT;
-    }
+  sector_counts.direct_sector_count = MIN(left_sector_count, INODE_DISK_MAX_SECTOR_COUNT);
+  left_sector_count -= sector_counts.direct_sector_count;
+  sector_counts.indirect_sector_count = MIN(left_sector_count, INODE_DISK_MAX_SECTOR_COUNT);
+  left_sector_count -= sector_counts.indirect_sector_count;
+  sector_counts.doubly_indirect_sector_count = left_sector_count;
+
   return sector_counts;
 }
 
