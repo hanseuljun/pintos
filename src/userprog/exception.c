@@ -1,10 +1,12 @@
 #include "userprog/exception.h"
 #include <inttypes.h>
 #include <stdio.h>
+#include "filesys/fs-cache.h"
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
 #include "userprog/syscall.h"
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
@@ -213,6 +215,11 @@ page_fault (struct intr_frame *f)
       pagedir_set_dirty (thread_current ()->pagedir, upage, false);
       return;
     }
+
+  /* If the page fault happened during writing on the file esystem's buffer cache,
+     the lock for the buffer cache needs to be released before cleaning things up. */
+  if (lock_held_by_current_thread (fs_cache_get_lock ()))
+    lock_release (fs_cache_get_lock ());
 
   syscall_exit (-1);
   NOT_REACHED ();
