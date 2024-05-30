@@ -160,8 +160,11 @@ void periodic_flusher (void *aux UNUSED)
            e = list_next (e))
         {
           struct fs_cache_elem *elem = list_entry (e, struct fs_cache_elem, list_elem);
-          if (elem->should_write)
-            block_write (fs_device, elem->sector_idx, elem->buffer);
+          if (!elem->should_write)
+            continue;
+
+          block_write (fs_device, elem->sector_idx, elem->buffer);
+          elem->should_write = false;
         }
 
       lock_release (&buffer_lock);

@@ -175,11 +175,14 @@ inode_data_release (struct inode_data *inode_data)
 bool
 inode_data_extend (struct inode_data *inode_data, off_t length)
 {
-  size_t current_length = inode_data->direct_inode_disk.length;
+  size_t current_length = inode_data_length (inode_data);
   size_t target_length = current_length + length;
 
   struct inode_sector_counts current_sector_counts = bytes_to_sector_counts (current_length);
   struct inode_sector_counts target_sector_counts = bytes_to_sector_counts (target_length);
+
+  // TODO: Do not increase inode length when extension fails.
+  inode_data->direct_inode_disk.length += length;
 
   if (target_sector_counts.direct_sector_count == current_sector_counts.direct_sector_count + 1)
     {
@@ -190,7 +193,6 @@ inode_data_extend (struct inode_data *inode_data, off_t length)
       inode_data->direct_inode_disk.sectors[current_sector_counts.direct_sector_count] = sector;
       memset (fs_cache_get_buffer (sector), 0, BLOCK_SECTOR_SIZE);
       fs_cache_write (sector);
-      inode_data->direct_inode_disk.length += length;
       
       return true;
     }
@@ -198,6 +200,15 @@ inode_data_extend (struct inode_data *inode_data, off_t length)
   // TODO: Implement other cases.
 
   return false;
+}
+
+void
+inode_data_flush (struct inode_data *inode_data, block_sector_t sector)
+{
+  lock_acquire (fs_cache_get_lock ());
+  memcpy (fs_cache_get_buffer (sector), &inode_data->direct_inode_disk, BLOCK_SECTOR_SIZE);
+  fs_cache_write (sector);
+  lock_release (fs_cache_get_lock ());
 }
 
 off_t

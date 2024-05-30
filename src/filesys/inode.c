@@ -138,6 +138,10 @@ inode_close (struct inode *inode)
           free_map_release (inode->sector, 1);
           inode_data_release (inode->data);
         }
+      else
+        {
+          inode_data_flush (inode->data, inode->sector);
+        }
 
       free (inode->data);
       free (inode); 
