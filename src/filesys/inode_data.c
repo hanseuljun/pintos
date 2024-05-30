@@ -51,3 +51,18 @@ bytes_to_sector_counts (off_t size)
     }
   return sector_counts;
 }
+
+block_sector_t
+byte_to_sector (const struct inode_data *inode_data, off_t pos) 
+{
+  if (pos < inode_data->direct_inode_disk.length)
+    {
+      size_t index = pos / BLOCK_SECTOR_SIZE;
+      if (index < INODE_DISK_MAX_SECTOR_COUNT)
+        return inode_data->direct_inode_disk.sectors[index];
+      else
+        return inode_data->indirect_inode_disk.sectors[index - INODE_DISK_MAX_SECTOR_COUNT];
+    }
+  else
+    return -1;
+}

@@ -46,4 +46,10 @@ void inode_data_release (struct inode_data *inode_data);
    bytes long. */
 struct inode_sector_counts bytes_to_sector_counts (off_t size);
 
+/* Returns the block device sector that contains byte offset POS
+   within INODE.
+   Returns -1 if INODE does not contain data for a byte at offset
+   POS. */
+block_sector_t byte_to_sector (const struct inode_data *inode_data, off_t pos);
+
 #endif /* filesys/inode_data.h */

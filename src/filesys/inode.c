@@ -20,26 +20,6 @@ struct inode
     struct inode_data *data;             /* Inode content. */
   };
 
-/* Returns the block device sector that contains byte offset POS
-   within INODE.
-   Returns -1 if INODE does not contain data for a byte at offset
-   POS. */
-static block_sector_t
-byte_to_sector (const struct inode *inode, off_t pos) 
-{
-  ASSERT (inode != NULL);
-  if (pos < inode->data->direct_inode_disk.length)
-    {
-      size_t index = pos / BLOCK_SECTOR_SIZE;
-      if (index < INODE_DISK_MAX_SECTOR_COUNT)
-        return inode->data->direct_inode_disk.sectors[index];
-      else
-        return inode->data->indirect_inode_disk.sectors[index - INODE_DISK_MAX_SECTOR_COUNT];
-    }
-  else
-    return -1;
-}
-
 /* List of open inodes, so that opening a single inode twice
    returns the same `struct inode'. */
 static struct list open_inodes;
@@ -250,6 +230,8 @@ inode_remove (struct inode *inode)
 off_t
 inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) 
 {
+  ASSERT (inode != NULL);
+
   uint8_t *buffer = buffer_;
   off_t bytes_read = 0;
 
@@ -257,7 +239,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   while (size > 0) 
     {
       /* Disk sector to read, starting byte offset within sector. */
-      block_sector_t sector_idx = byte_to_sector (inode, offset);
+      block_sector_t sector_idx = byte_to_sector (inode->data, offset);
       int sector_ofs = offset % BLOCK_SECTOR_SIZE;
 
       /* Bytes left in inode, bytes left in sector, lesser of the two. */
@@ -292,6 +274,8 @@ off_t
 inode_write_at (struct inode *inode, const void *buffer_, off_t size,
                 off_t offset) 
 {
+  ASSERT (inode != NULL);
+
   const uint8_t *buffer = buffer_;
   off_t bytes_written = 0;
 
@@ -303,7 +287,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   while (size > 0) 
     {
       /* Sector to write, starting byte offset within sector. */
-      block_sector_t sector_idx = byte_to_sector (inode, offset);
+      block_sector_t sector_idx = byte_to_sector (inode->data, offset);
       int sector_ofs = offset % BLOCK_SECTOR_SIZE;
 
       /* Bytes left in inode, bytes left in sector, lesser of the two. */
