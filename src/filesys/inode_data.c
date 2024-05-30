@@ -33,6 +33,8 @@ struct inode_data
   {
     struct direct_inode_disk direct_inode_disk;
     struct indirect_inode_disk indirect_inode_disk;
+    struct indirect_inode_disk parent_doubly_indirect_inode_disk;
+    struct indirect_inode_disk children_doubly_indirect_inode_disk[INODE_DISK_MAX_SECTOR_COUNT];
   };
 
 struct inode_sector_counts
