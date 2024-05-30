@@ -38,6 +38,12 @@ struct inode_sector_counts
     size_t indirect_sector_count;
   };
 
+struct inode_data
+  {
+    struct direct_inode_disk direct_inode_disk;
+    struct indirect_inode_disk indirect_inode_disk;
+  };
+
 /* Returns the number of sectors to allocate for an inode SIZE
    bytes long. */
 static inline struct inode_sector_counts
@@ -66,8 +72,7 @@ struct inode
     int open_cnt;                       /* Number of openers. */
     bool removed;                       /* True if deleted, false otherwise. */
     int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
-    struct direct_inode_disk direct_inode_disk;  /* Inode content. */
-    struct indirect_inode_disk indirect_inode_disk;
+    struct inode_data data;             /* Inode content. */
   };
 
 /* Returns the block device sector that contains byte offset POS
@@ -78,13 +83,13 @@ static block_sector_t
 byte_to_sector (const struct inode *inode, off_t pos) 
 {
   ASSERT (inode != NULL);
-  if (pos < inode->direct_inode_disk.length)
+  if (pos < inode->data.direct_inode_disk.length)
     {
       size_t index = pos / BLOCK_SECTOR_SIZE;
       if (index < INODE_DISK_MAX_SECTOR_COUNT)
-        return inode->direct_inode_disk.sectors[index];
+        return inode->data.direct_inode_disk.sectors[index];
       else
-        return inode->indirect_inode_disk.sectors[index - INODE_DISK_MAX_SECTOR_COUNT];
+        return inode->data.indirect_inode_disk.sectors[index - INODE_DISK_MAX_SECTOR_COUNT];
     }
   else
     return -1;
@@ -234,9 +239,9 @@ inode_open (block_sector_t sector)
   inode->removed = false;
   lock_acquire (fs_cache_get_lock ());
   fs_cache_read (inode->sector);
-  memcpy (&inode->direct_inode_disk, fs_cache_get_buffer (inode->sector), BLOCK_SECTOR_SIZE);
-  if (inode->direct_inode_disk.indirect_sector != INVALID_SECTOR)
-    memcpy (&inode->indirect_inode_disk, fs_cache_get_buffer (inode->direct_inode_disk.indirect_sector), BLOCK_SECTOR_SIZE);
+  memcpy (&inode->data.direct_inode_disk, fs_cache_get_buffer (inode->sector), BLOCK_SECTOR_SIZE);
+  if (inode->data.direct_inode_disk.indirect_sector != INVALID_SECTOR)
+    memcpy (&inode->data.indirect_inode_disk, fs_cache_get_buffer (inode->data.direct_inode_disk.indirect_sector), BLOCK_SECTOR_SIZE);
   lock_release (fs_cache_get_lock ());
   return inode;
 }
@@ -276,13 +281,13 @@ inode_close (struct inode *inode)
       /* Deallocate blocks if removed. */
       if (inode->removed) 
         {
-          struct inode_sector_counts sector_counts = bytes_to_sector_counts (inode->direct_inode_disk.length);
+          struct inode_sector_counts sector_counts = bytes_to_sector_counts (inode->data.direct_inode_disk.length);
           free_map_release (inode->sector, 1);
 
           for (size_t i = 0; i < sector_counts.direct_sector_count; i++)
-            free_map_release (inode->direct_inode_disk.sectors[i], 1);
+            free_map_release (inode->data.direct_inode_disk.sectors[i], 1);
           for (size_t i = 0; i < sector_counts.indirect_sector_count; i++)
-            free_map_release (inode->indirect_inode_disk.sectors[i], 1);
+            free_map_release (inode->data.indirect_inode_disk.sectors[i], 1);
         }
 
       free (inode); 
@@ -415,5 +420,5 @@ inode_allow_write (struct inode *inode)
 off_t
 inode_length (const struct inode *inode)
 {
-  return inode->direct_inode_disk.length;
+  return inode->data.direct_inode_disk.length;
 }
