@@ -74,14 +74,13 @@ inode_data_create (block_sector_t sector, off_t length)
   ASSERT (length < (BLOCK_SECTOR_SIZE * INODE_DISK_MAX_SECTOR_COUNT * 2));
 
   struct inode_data *inode_data = calloc (1, sizeof *inode_data);
+  if (inode_data == NULL)
+    return false;
 
   /* If this assertion fails, the inode structure is not exactly
      one sector in size, and you should fix that. */
   ASSERT (sizeof inode_data->direct_inode_disk == BLOCK_SECTOR_SIZE);
   ASSERT (sizeof inode_data->indirect_inode_disk == BLOCK_SECTOR_SIZE);
-
-  if (inode_data == NULL)
-    return false;
 
   inode_data->direct_inode_disk.length = length;
   inode_data->direct_inode_disk.indirect_sector = INVALID_SECTOR;
