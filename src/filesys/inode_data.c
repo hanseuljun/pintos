@@ -84,6 +84,7 @@ inode_data_create (block_sector_t sector, off_t length)
       inode_data->direct_inode_disk.length = length;
       inode_data->direct_inode_disk.indirect_sector = INVALID_SECTOR;
       inode_data->direct_inode_disk.magic = INODE_MAGIC;
+      inode_data->indirect_inode_disk.magic = INODE_MAGIC;
 
       success = true;
       for (size_t i = 0; i < sector_counts.direct_sector_count; i++)
@@ -154,8 +155,14 @@ inode_data_open (block_sector_t sector)
   lock_acquire (fs_cache_get_lock ());
   fs_cache_read (sector);
   memcpy (&inode_data->direct_inode_disk, fs_cache_get_buffer (sector), BLOCK_SECTOR_SIZE);
+  ASSERT (inode_data->direct_inode_disk.magic == INODE_MAGIC);
+
   if (inode_data->direct_inode_disk.indirect_sector != INVALID_SECTOR)
-    memcpy (&inode_data->indirect_inode_disk, fs_cache_get_buffer (inode_data->direct_inode_disk.indirect_sector), BLOCK_SECTOR_SIZE);
+    {
+      fs_cache_read (inode_data->direct_inode_disk.indirect_sector);
+      memcpy (&inode_data->indirect_inode_disk, fs_cache_get_buffer (inode_data->direct_inode_disk.indirect_sector), BLOCK_SECTOR_SIZE);
+      ASSERT (inode_data->indirect_inode_disk.magic == INODE_MAGIC);
+    }
   lock_release (fs_cache_get_lock ());
 
   return inode_data;
