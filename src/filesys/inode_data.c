@@ -166,8 +166,10 @@ void write_inode_data_disks (struct inode_data *inode_data, block_sector_t direc
       fs_cache_write (sector);
     }
 
-  if (inode_data->direct_inode_disk.indirect_sector != INVALID_SECTOR)
+  if (sector_counts.indirect_sector_count > 0)
     {
+      ASSERT (inode_data->direct_inode_disk.indirect_sector != INVALID_SECTOR);
+
       block_sector_t indirect_sector = inode_data->direct_inode_disk.indirect_sector;
       memcpy (fs_cache_get_buffer (indirect_sector), &inode_data->indirect_inode_disk, BLOCK_SECTOR_SIZE);
       fs_cache_write (indirect_sector);
