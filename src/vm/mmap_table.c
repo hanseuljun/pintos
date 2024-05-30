@@ -144,6 +144,7 @@ void mmap_table_update_file (struct mmap_elem *mmap_elem)
       if (!pagedir_is_dirty (pd, uaddr))
         continue;
 
-      file_write_at (mmap_elem->file, uaddr, PGSIZE, offset);
+      size_t left_size = mmap_elem->filesize - offset;
+      file_write_at (mmap_elem->file, uaddr, left_size < PGSIZE ? left_size : PGSIZE, offset);
     }
 }
