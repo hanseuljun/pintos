@@ -179,7 +179,7 @@ inode_data_length (const struct inode_data *inode_data)
 }
 
 block_sector_t
-byte_to_sector (const struct inode_data *inode_data, off_t pos) 
+inode_data_sector (const struct inode_data *inode_data, off_t pos) 
 {
   if (pos < inode_data->direct_inode_disk.length)
     {

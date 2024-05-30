@@ -16,6 +16,6 @@ off_t inode_data_length (const struct inode_data *inode_data);
    within INODE.
    Returns -1 if INODE does not contain data for a byte at offset
    POS. */
-block_sector_t byte_to_sector (const struct inode_data *inode_data, off_t pos);
+block_sector_t inode_data_sector (const struct inode_data *inode_data, off_t pos);
 
 #endif /* filesys/inode_data.h */
