@@ -182,21 +182,14 @@ inode_open (block_sector_t sector)
   inode->deny_write_cnt = 0;
   inode->removed = false;
 
-  inode->data = malloc (sizeof *inode->data);
+  inode->data = inode_data_open (sector);
   if (inode->data == NULL)
     {
       free(inode);
       return NULL;
     }
-  lock_acquire (fs_cache_get_lock ());
-  fs_cache_read (inode->sector);
-  memcpy (&inode->data->direct_inode_disk, fs_cache_get_buffer (inode->sector), BLOCK_SECTOR_SIZE);
-  if (inode->data->direct_inode_disk.indirect_sector != INVALID_SECTOR)
-    memcpy (&inode->data->indirect_inode_disk, fs_cache_get_buffer (inode->data->direct_inode_disk.indirect_sector), BLOCK_SECTOR_SIZE);
-  lock_release (fs_cache_get_lock ());
 
   list_push_front (&open_inodes, &inode->elem);
-
   return inode;
 }
 
