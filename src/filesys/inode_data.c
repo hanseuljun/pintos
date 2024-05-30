@@ -19,8 +19,9 @@ struct direct_inode_disk
     block_sector_t sectors[INODE_DISK_MAX_SECTOR_COUNT];  /* First data sector. */
     off_t length;                       /* File size in bytes. */
     block_sector_t indirect_sector;
+    block_sector_t doubly_indirect_sector;
     unsigned magic;                     /* Magic number. */
-    uint32_t unused[7];                 /* Not used. */
+    uint32_t unused[6];                 /* Not used. */
   };
 
 struct indirect_inode_disk
@@ -42,7 +43,7 @@ struct inode_sector_counts
   {
     size_t direct_sector_count;
     size_t indirect_sector_count;
-    size_t doubly_indirect_sector_count;
+    size_t doubly_indirect_sector_count;  /* Number of sectors in children nodes. */
   };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -122,6 +123,30 @@ bool allocate_inode_data_disks (struct inode_data *inode_data, off_t length)
         {
           if (!free_map_allocate(1, &inode_data->indirect_inode_disk.sectors[i]))
             return false;
+        }
+    }
+
+  if (sector_counts.doubly_indirect_sector_count > 0)
+    {
+      if (!free_map_allocate(1, &inode_data->direct_inode_disk.doubly_indirect_sector))
+        return false;
+      
+      size_t parent_sector_index = 0;
+      size_t left_children_sector_count = sector_counts.doubly_indirect_sector_count;
+      while (left_children_sector_count > 0)
+        {
+          if (!free_map_allocate(1, &inode_data->parent_doubly_indirect_inode_disk.sectors[parent_sector_index]))
+            return false;
+
+          size_t child_sector_count = MIN(left_children_sector_count, INODE_DISK_MAX_SECTOR_COUNT);
+          for (size_t i = 0; i < child_sector_count; i++)
+            {
+              if (!free_map_allocate(1, &inode_data->children_doubly_indirect_inode_disk[parent_sector_index].sectors[i]))
+                return false;
+            }
+          
+          parent_sector_index++;
+          left_children_sector_count -= child_sector_count;
         }
     }
 
