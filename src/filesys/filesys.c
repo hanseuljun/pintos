@@ -73,6 +73,22 @@ filesys_create_dir (struct dir *dir, const char *name)
   return success;
 }
 
+/* Opens the file with the given NAME.
+   Returns the new file if successful or a null pointer
+   otherwise.
+   Fails if no file named NAME exists,
+   or if an internal memory allocation fails. */
+struct file *
+filesys_open_file (struct dir *dir, const char *name)
+{
+  struct inode *inode = NULL;
+
+  if (dir != NULL)
+    dir_lookup (dir, name, &inode);
+
+  return file_open (inode);
+}
+
 struct dir *
 filesys_open_dir (struct dir *dir, const char *name)
 {
@@ -94,22 +110,14 @@ filesys_create_file_at_root (const char *name, off_t initial_size)
   return success;
 }
 
-/* Opens the file with the given NAME.
-   Returns the new file if successful or a null pointer
-   otherwise.
-   Fails if no file named NAME exists,
-   or if an internal memory allocation fails. */
 struct file *
 filesys_open_file_at_root (const char *name)
 {
   struct dir *dir = dir_open_root ();
-  struct inode *inode = NULL;
-
-  if (dir != NULL)
-    dir_lookup (dir, name, &inode);
+  struct file *file = filesys_open_file (dir, name);
   dir_close (dir);
 
-  return file_open (inode);
+  return file;
 }
 
 /* Deletes the file named NAME.

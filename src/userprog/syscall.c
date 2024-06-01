@@ -62,8 +62,10 @@ static bool is_fd_for_file (int fd);
 void
 syscall_init (void) 
 {
-  current_dir = dir_open_root ();
   lock_init (&global_filesys_lock);
+  lock_acquire (&global_filesys_lock);
+  current_dir = dir_open_root ();
+  lock_release (&global_filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -218,32 +220,33 @@ handle_wait (void *esp)
 static bool
 handle_create (void *esp)
 {
-  const char *file_name = (const char *) get_argument(esp, 1);
+  const char *path = (const char *) get_argument(esp, 1);
   unsigned initial_size = (unsigned) get_argument(esp, 2);
 
-  /* Exit when file_name is pointing an invalid address. */
-  if (!is_uaddr_valid (file_name))
+  /* Exit when path is pointing an invalid address. */
+  if (!is_uaddr_valid (path))
     {
       syscall_exit (-1);
       NOT_REACHED ();
     }
-  /* Exit when file_name is NULL. */
-  if (file_name == NULL)
+  /* Exit when path is NULL. */
+  if (path == NULL)
     {
       syscall_exit (-1);
       NOT_REACHED ();
     }
-  /* Fail when file_name is an empty string. */
-  if (file_name[0] == '\0')
+  /* Fail when path is an empty string. */
+  if (path[0] == '\0')
     {
       return false;
     }
 
-  struct dir *dir = dir_open_root ();
+  char *s = malloc (strlen (path) + 1);
+  memcpy (s, path, strlen (path));
+  s[strlen (path)] = '\0';
 
-  char *s = malloc (strlen (file_name) + 1);
-  memcpy (s, file_name, strlen (file_name));
-  s[strlen (file_name)] = '\0';
+  lock_acquire (&global_filesys_lock);
+  struct dir *dir = dir_reopen (current_dir);
 
   char *token;
   char *save_ptr;
@@ -259,12 +262,11 @@ handle_create (void *esp)
       prev_token = token;
     }
 
-  lock_acquire (&global_filesys_lock);
   bool success = filesys_create_file (dir, prev_token, initial_size);
+  dir_close (dir);
   lock_release (&global_filesys_lock);
 
   free(s);
-  dir_close (dir);
 
   return success;
 }
@@ -300,26 +302,55 @@ handle_remove (void *esp)
 static int
 handle_open (void *esp)
 {
-  const char *file_name = (const char *) get_argument(esp, 1);
+  const char *path = (const char *) get_argument(esp, 1);
   struct file *file;
   struct fd_info *fd_info;
 
-  /* Exit when file_name is pointing an invalid address. */
-  if (!is_uaddr_valid (file_name))
+  /* Exit when path is pointing an invalid address. */
+  if (!is_uaddr_valid (path))
     {
       syscall_exit (-1);
       NOT_REACHED ();
     }
-  /* Exit when file_name is NULL. */
-  if (file_name == NULL)
+  /* Exit when path is NULL. */
+  if (path == NULL)
     {
       syscall_exit (-1);
       NOT_REACHED ();
+    }
+  /* Fail when path is an empty string. */
+  if (path[0] == '\0')
+    {
+      return -1;
     }
 
+  char *s = malloc (strlen (path) + 1);
+  memcpy (s, path, strlen (path));
+  s[strlen (path)] = '\0';
+
   lock_acquire (&global_filesys_lock);
-  file = filesys_open_file_at_root (file_name);
+  struct dir *dir = dir_reopen (current_dir);
+
+  char *token;
+  char *save_ptr;
+  char *prev_token = NULL;
+  for (token = strtok_r (s, "/", &save_ptr); token != NULL; token = strtok_r (NULL, "/", &save_ptr))
+    {
+      if (prev_token != NULL)
+        {
+          struct dir *prev_dir = dir;
+          dir = filesys_open_dir (dir, prev_token);
+          dir_close (prev_dir);
+        }
+      prev_token = token;
+    }
+
+  file = filesys_open_file (dir, prev_token);
+  dir_close (dir);
   lock_release (&global_filesys_lock);
+
+  free(s);
+
   if (file == NULL)
     return -1;
 
@@ -517,12 +548,38 @@ static bool
 handle_mkdir (void *esp)
 {
   char *path = (char *) get_argument(esp, 1);
-  if (strlen(path) == 0)
-    return false;
+  /* Fail when path is an empty string. */
+  if (path[0] == '\0')
+    {
+      return false;
+    }
 
-  struct dir *dir = dir_open_root ();
-  filesys_create_dir (dir, path);
+  char *s = malloc (strlen (path) + 1);
+  memcpy (s, path, strlen (path));
+  s[strlen (path)] = '\0';
+
+  lock_acquire (&global_filesys_lock);
+  struct dir *dir = dir_reopen (current_dir);
+
+  char *token;
+  char *save_ptr;
+  char *prev_token = NULL;
+  for (token = strtok_r (s, "/", &save_ptr); token != NULL; token = strtok_r (NULL, "/", &save_ptr))
+    {
+      if (prev_token != NULL)
+        {
+          struct dir *prev_dir = dir;
+          dir = filesys_open_dir (dir, prev_token);
+          dir_close (prev_dir);
+        }
+      prev_token = token;
+    }
+
+  bool success = filesys_create_dir (dir, prev_token);
   dir_close (dir);
+  lock_release (&global_filesys_lock);
+
+  free(s);
 
   return true;
 }
