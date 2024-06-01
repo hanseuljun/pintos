@@ -388,8 +388,19 @@ void
 inode_data_flush (struct inode_data *inode_data, block_sector_t sector)
 {
   lock_acquire (fs_cache_get_lock ());
+
+  struct inode_sector_counts sector_counts = bytes_to_sector_counts (inode_data->direct_inode_disk.length);
+
   memcpy (fs_cache_get_buffer (sector), &inode_data->direct_inode_disk, BLOCK_SECTOR_SIZE);
   fs_cache_write (sector);
+
+  if (sector_counts.indirect_sector_count > 0)
+    {
+      size_t indirect_sector = inode_data->direct_inode_disk.indirect_sector;
+      memcpy (fs_cache_get_buffer (indirect_sector), &inode_data->indirect_inode_disk, BLOCK_SECTOR_SIZE);
+      fs_cache_write (indirect_sector);
+    }
+
   lock_release (fs_cache_get_lock ());
 }
 
@@ -422,5 +433,7 @@ inode_data_sector (const struct inode_data *inode_data, off_t pos)
         }
     }
   else
-    return -1;
+    {
+      return -1;
+    }
 }
