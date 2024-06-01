@@ -515,12 +515,22 @@ handle_munmap (void *esp)
 }
 #endif
 
+static void handle_chdir_dir_and_filename_func (struct dir *dir, const char *filename, void *aux);
+
 static bool
 handle_chdir (void *esp)
 {
-  char *dir = (char *) get_argument(esp, 1);
+  char *path = (char *) get_argument(esp, 1);
+
+  run_dir_and_filename_func_with_path (path, handle_chdir_dir_and_filename_func, NULL);
 
   return true;
+}
+
+static void
+handle_chdir_dir_and_filename_func (struct dir *dir, const char *filename, void *aux)
+{
+  current_dir = filesys_open_dir (dir, filename);
 }
 
 static void handle_mkdir_dir_and_filename_func (struct dir *dir, const char *filename, void *aux);
