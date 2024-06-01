@@ -350,7 +350,7 @@ static void
 handle_open_dir_and_filename_func (struct dir *dir, const char *filename, void *aux)
 {
   struct file **result = aux;
-  if (filename == NULL)
+  if (filename == NULL || (strcmp (filename, ".") == 0))
     *result = file_open (dir_get_inode (dir));
   else
     *result = filesys_open_file (dir, filename);
@@ -547,7 +547,10 @@ handle_chdir (void *esp)
 static void
 handle_chdir_dir_and_filename_func (struct dir *dir, const char *filename, void *aux UNUSED)
 {
-  current_dir = filesys_open_dir (dir, filename);
+  if (filename == NULL)
+    current_dir = dir_reopen (dir);
+  else
+    current_dir = filesys_open_dir (dir, filename);
 }
 
 static void handle_mkdir_dir_and_filename_func (struct dir *dir, const char *filename, void *aux);
