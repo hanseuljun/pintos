@@ -171,11 +171,6 @@ page_fault (struct intr_frame *f)
   //         write ? "writing" : "reading",
   //         user ? "user" : "kernel");
 
-  /* If the page fault happened during writing on the file esystem's buffer cache,
-     the lock for the buffer cache needs to be released before cleaning things up. */
-  if (lock_held_by_current_thread (fs_cache_get_lock ()))
-    lock_release (fs_cache_get_lock ());
-
   /* Swap in the page if the page exists in the swap table. */
   if (swap_table_find (thread_tid (), pg_round_down (fault_addr)) != NULL)
     {

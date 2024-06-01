@@ -6,6 +6,7 @@
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "filesys/fs-cache.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "threads/interrupt.h"
@@ -77,6 +78,9 @@ syscall_exit (int status)
   if (lock_held_by_current_thread (&global_filesys_lock))
     lock_release (&global_filesys_lock);
 #endif
+
+  if (lock_held_by_current_thread (fs_cache_get_lock ()))
+    lock_release (fs_cache_get_lock ());
 
   /* Pass status to parent. */
   int parent_tid = t->parent_tid;
