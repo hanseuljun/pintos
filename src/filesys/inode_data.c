@@ -71,10 +71,6 @@ inode_data_create (block_sector_t sector, off_t length)
 {
   ASSERT (lock_held_by_current_thread (fs_cache_get_lock ()));
 
-  // TODO: Remove following ASSERT check when the indexed inode is
-  // properly implemented.
-  ASSERT (length < (BLOCK_SECTOR_SIZE * INODE_DISK_MAX_SECTOR_COUNT * 2));
-
   struct inode_data *inode_data = calloc (1, sizeof *inode_data);
   if (inode_data == NULL)
     return false;
@@ -105,6 +101,7 @@ bool allocate_inode_data_disks (struct inode_data *inode_data, off_t length)
   struct inode_sector_counts sector_counts = bytes_to_sector_counts (length);
   inode_data->direct_inode_disk.length = length;
   inode_data->direct_inode_disk.indirect_sector = INVALID_SECTOR;
+  inode_data->direct_inode_disk.doubly_indirect_sector = INVALID_SECTOR;
   inode_data->direct_inode_disk.magic = INODE_MAGIC;
   inode_data->indirect_inode_disk.magic = INODE_MAGIC;
 
