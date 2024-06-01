@@ -59,8 +59,8 @@ static int find_available_fd (void);
 static bool is_uaddr_valid (const void *uaddr);
 static bool is_fd_for_file (int fd);
 
-typedef void dir_and_filename_action_func (struct dir *dir, const char *filename, void *aux);
-static void run_for_path (const char *path, dir_and_filename_action_func *func, void *aux);
+typedef void dir_and_filename_func (struct dir *dir, const char *filename, void *aux);
+static void run_dir_and_filename_func_with_path (const char *path, dir_and_filename_func *func, void *aux);
 
 void
 syscall_init (void) 
@@ -220,6 +220,14 @@ handle_wait (void *esp)
   return process_wait (pid);
 }
 
+struct handle_create_dir_and_filename_aux
+{
+  int initial_size;
+  bool success;
+};
+
+static void handle_create_dir_and_filename_func (struct dir *dir, const char *filename, void *aux);
+
 static bool
 handle_create (void *esp)
 {
@@ -244,34 +252,18 @@ handle_create (void *esp)
       return false;
     }
 
-  char *s = malloc (strlen (path) + 1);
-  memcpy (s, path, strlen (path));
-  s[strlen (path)] = '\0';
+  struct handle_create_dir_and_filename_aux aux;
+  aux.initial_size = initial_size;
+  run_dir_and_filename_func_with_path (path, handle_create_dir_and_filename_func, &aux);
 
-  lock_acquire (&global_filesys_lock);
-  struct dir *dir = dir_reopen (current_dir);
+  return aux.success;
+}
 
-  char *token;
-  char *save_ptr;
-  char *prev_token = NULL;
-  for (token = strtok_r (s, "/", &save_ptr); token != NULL; token = strtok_r (NULL, "/", &save_ptr))
-    {
-      if (prev_token != NULL)
-        {
-          struct dir *prev_dir = dir;
-          dir = filesys_open_dir (dir, prev_token);
-          dir_close (prev_dir);
-        }
-      prev_token = token;
-    }
-
-  bool success = filesys_create_file (dir, prev_token, initial_size);
-  dir_close (dir);
-  lock_release (&global_filesys_lock);
-
-  free(s);
-
-  return success;
+static void
+handle_create_dir_and_filename_func (struct dir *dir, const char *filename, void *aux)
+{
+  struct handle_create_dir_and_filename_aux *handle_create_dir_and_filename_aux = aux;
+  handle_create_dir_and_filename_aux->success = filesys_create_file (dir, filename, handle_create_dir_and_filename_aux->initial_size);
 }
 
 static bool
@@ -329,7 +321,7 @@ handle_open (void *esp)
       return -1;
     }
 
-  run_for_path (path, handle_open_dir_and_filename_func, &file);
+  run_dir_and_filename_func_with_path (path, handle_open_dir_and_filename_func, &file);
 
   if (file == NULL)
     return -1;
@@ -531,6 +523,8 @@ handle_chdir (void *esp)
   return true;
 }
 
+static void handle_mkdir_dir_and_filename_func (struct dir *dir, const char *filename, void *aux);
+
 static bool
 handle_mkdir (void *esp)
 {
@@ -541,34 +535,17 @@ handle_mkdir (void *esp)
       return false;
     }
 
-  char *s = malloc (strlen (path) + 1);
-  memcpy (s, path, strlen (path));
-  s[strlen (path)] = '\0';
-
-  lock_acquire (&global_filesys_lock);
-  struct dir *dir = dir_reopen (current_dir);
-
-  char *token;
-  char *save_ptr;
-  char *prev_token = NULL;
-  for (token = strtok_r (s, "/", &save_ptr); token != NULL; token = strtok_r (NULL, "/", &save_ptr))
-    {
-      if (prev_token != NULL)
-        {
-          struct dir *prev_dir = dir;
-          dir = filesys_open_dir (dir, prev_token);
-          dir_close (prev_dir);
-        }
-      prev_token = token;
-    }
-
-  bool success = filesys_create_dir (dir, prev_token);
-  dir_close (dir);
-  lock_release (&global_filesys_lock);
-
-  free(s);
+  bool success;
+  run_dir_and_filename_func_with_path (path, handle_mkdir_dir_and_filename_func, &success);
 
   return success;
+}
+
+static void
+handle_mkdir_dir_and_filename_func (struct dir *dir, const char *filename, void *aux)
+{
+  bool *result = aux;
+  *result = filesys_create_dir (dir, filename);
 }
 
 static uint32_t
@@ -624,7 +601,7 @@ is_fd_for_file (int fd)
 }
 
 static void
-run_for_path (const char *path, dir_and_filename_action_func *func, void *aux)
+run_dir_and_filename_func_with_path (const char *path, dir_and_filename_func *func, void *aux)
 {
   char *s = malloc (strlen (path) + 1);
   memcpy (s, path, strlen (path));
