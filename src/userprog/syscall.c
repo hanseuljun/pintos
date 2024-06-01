@@ -56,6 +56,8 @@ static void handle_munmap (void *esp);
 static bool handle_chdir (void *esp);
 static bool handle_mkdir (void *esp);
 static bool handle_readdir (void *esp);
+static int handle_inumber (void *esp);
+
 static uint32_t get_argument (void *esp, size_t idx);
 static int find_available_fd (void);
 static bool is_uaddr_valid (const void *uaddr);
@@ -189,6 +191,9 @@ syscall_handler (struct intr_frame *f)
         return;
       case SYS_READDIR:
         f->eax = handle_readdir (f->esp);
+        return;
+      case SYS_INUMBER:
+        f->eax = handle_inumber (f->esp);
         return;
 #endif
     }
@@ -567,6 +572,18 @@ static bool
 handle_readdir (void *esp)
 {
   return false;
+}
+
+static int
+handle_inumber (void *esp)
+{
+  int fd = (int) get_argument(esp, 1);
+
+  struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  lock_acquire (&global_filesys_lock);
+  int inumber = inode_get_inumber (file_get_inode (fd_info->file));
+  lock_release (&global_filesys_lock);
+  return inumber;
 }
 
 static void
