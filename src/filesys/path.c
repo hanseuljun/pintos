@@ -1,11 +1,13 @@
 #include "path.h"
 #include <list.h>
 #include <string.h>
+#include "filesys/directory.h"
+#include "filesys/filesys.h"
 #include "threads/malloc.h"
 
 struct path_elem
   {
-    const char *name;
+    char *name;
     struct list_elem list_elem;
   };
 
@@ -42,7 +44,20 @@ path_create (const char *path_str)
   return path;
 }
 
-char *path_to_string(struct path *path)
+void
+path_release(struct path *path)
+{
+  for (struct list_elem *e = list_begin (&path->elem_list); e != list_end (&path->elem_list);
+       e = list_next (e))
+    {
+      struct path_elem *elem = list_entry (e, struct path_elem, list_elem);
+      free (elem->name);
+      free (elem);
+    }
+  free (path);
+}
+
+char *path_get_string(struct path *path)
 {
   if (list_empty (&path->elem_list))
     return copy_string ("/");
@@ -69,4 +84,34 @@ char *path_to_string(struct path *path)
   
   path_str[path_str_length] = '\0';
   return path_str;
+}
+
+struct dir *
+path_get_dir(struct path *path)
+{
+  struct dir *dir = dir_open_root ();
+
+  for (struct list_elem *e = list_begin (&path->elem_list); e != list_end (&path->elem_list);
+       e = list_next (e))
+    {
+      struct path_elem *elem = list_entry (e, struct path_elem, list_elem);
+      struct dir *prev_dir = dir;
+      dir = filesys_open_dir (dir, elem->name);
+      dir_close (prev_dir);
+    }
+
+  return dir;
+}
+
+const char *
+path_pop_back(struct path *path)
+{
+  if (list_empty (&path->elem_list))
+    return NULL;
+
+  struct list_elem *e = list_pop_back (&path->elem_list);
+  struct path_elem *elem = list_entry (e, struct path_elem, list_elem);
+  const char *name = elem->name;
+  free (elem);
+  return name;
 }

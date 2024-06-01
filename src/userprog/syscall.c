@@ -661,36 +661,17 @@ is_fd_for_file (int fd)
 static void
 run_dir_and_filename_func_with_path_str (const char *path_str, dir_and_filename_func *func, void *aux)
 {
-  // struct path *path = path_create (path_str);
-  // char *test_path_str = path_to_string (path);
-  // printf ("path_str: %s, test_path_str: %s\n", path_str, test_path_str);
-  
-  char *s = malloc (strlen (path_str) + 1);
-  memcpy (s, path_str, strlen (path_str));
-  s[strlen (path_str)] = '\0';
+  struct path *path = path_create (path_str);
+  const char *filename = path_pop_back (path);
+  struct dir *dir = path_get_dir (path);
 
   lock_acquire (&global_filesys_lock);
-  struct dir *dir;
-  if (s[0] == '/')
-    dir = dir_open_root ();
-  else
-    dir = dir_reopen (current_dir);
 
-  char *token;
-  char *save_ptr;
-  char *prev_token = NULL;
-  for (token = strtok_r (s, "/", &save_ptr); token != NULL; token = strtok_r (NULL, "/", &save_ptr))
-    {
-      if (prev_token != NULL)
-        {
-          struct dir *prev_dir = dir;
-          dir = filesys_open_dir (dir, prev_token);
-          dir_close (prev_dir);
-        }
-      prev_token = token;
-    }
-
-  func (dir, prev_token, aux);
+  func (dir, filename, aux);
   dir_close (dir);
+
   lock_release (&global_filesys_lock);
+
+  free (filename);
+  path_release (path);
 }
