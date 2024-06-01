@@ -234,7 +234,7 @@ handle_create (void *esp)
     }
 
   lock_acquire (&global_filesys_lock);
-  bool success = filesys_create_at_root (file_name, initial_size);
+  bool success = filesys_create_file_at_root (file_name, initial_size);
   lock_release (&global_filesys_lock);
   return success;
 }
