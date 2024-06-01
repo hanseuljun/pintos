@@ -20,6 +20,6 @@ struct file *filesys_open_file (struct dir *dir, const char *name);
 struct dir *filesys_open_dir (struct dir *dir, const char *name);
 bool filesys_create_file_at_root (const char *name, off_t initial_size);
 struct file *filesys_open_file_at_root (const char *name);
-bool filesys_remove (const char *name);
+bool filesys_remove_at_root (const char *name);
 
 #endif /* filesys/filesys.h */

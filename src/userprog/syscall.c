@@ -299,7 +299,7 @@ handle_remove (void *esp)
     }
 
   lock_acquire (&global_filesys_lock);
-  bool success = filesys_remove (file_name);
+  bool success = filesys_remove_at_root (file_name);
   lock_release (&global_filesys_lock);
   return success;
 }
