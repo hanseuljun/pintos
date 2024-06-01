@@ -59,6 +59,9 @@ static int find_available_fd (void);
 static bool is_uaddr_valid (const void *uaddr);
 static bool is_fd_for_file (int fd);
 
+typedef void dir_and_filename_action_func (struct dir *dir, const char *filename, void *aux);
+static void run_for_path (const char *path, dir_and_filename_action_func *func, void *aux);
+
 void
 syscall_init (void) 
 {
@@ -299,6 +302,8 @@ handle_remove (void *esp)
   return success;
 }
 
+static void handle_open_dir_and_filename_func (struct dir *dir, const char *filename, void *aux);
+
 static int
 handle_open (void *esp)
 {
@@ -324,32 +329,7 @@ handle_open (void *esp)
       return -1;
     }
 
-  char *s = malloc (strlen (path) + 1);
-  memcpy (s, path, strlen (path));
-  s[strlen (path)] = '\0';
-
-  lock_acquire (&global_filesys_lock);
-  struct dir *dir = dir_reopen (current_dir);
-
-  char *token;
-  char *save_ptr;
-  char *prev_token = NULL;
-  for (token = strtok_r (s, "/", &save_ptr); token != NULL; token = strtok_r (NULL, "/", &save_ptr))
-    {
-      if (prev_token != NULL)
-        {
-          struct dir *prev_dir = dir;
-          dir = filesys_open_dir (dir, prev_token);
-          dir_close (prev_dir);
-        }
-      prev_token = token;
-    }
-
-  file = filesys_open_file (dir, prev_token);
-  dir_close (dir);
-  lock_release (&global_filesys_lock);
-
-  free(s);
+  run_for_path (path, handle_open_dir_and_filename_func, &file);
 
   if (file == NULL)
     return -1;
@@ -362,6 +342,13 @@ handle_open (void *esp)
 
   fd_info_map[fd - FD_BASE] = fd_info;
   return fd;
+}
+
+static void
+handle_open_dir_and_filename_func (struct dir *dir, const char *filename, void *aux)
+{
+  struct file **result = aux;
+  *result = filesys_open_file (dir, filename);
 }
 
 static int
@@ -581,7 +568,7 @@ handle_mkdir (void *esp)
 
   free(s);
 
-  return true;
+  return success;
 }
 
 static uint32_t
@@ -634,4 +621,33 @@ static bool
 is_fd_for_file (int fd)
 {
   return (fd >= FD_BASE) && (fd < (FD_BASE + FD_INFO_MAP_SIZE));
+}
+
+static void
+run_for_path (const char *path, dir_and_filename_action_func *func, void *aux)
+{
+  char *s = malloc (strlen (path) + 1);
+  memcpy (s, path, strlen (path));
+  s[strlen (path)] = '\0';
+
+  lock_acquire (&global_filesys_lock);
+  struct dir *dir = dir_reopen (current_dir);
+
+  char *token;
+  char *save_ptr;
+  char *prev_token = NULL;
+  for (token = strtok_r (s, "/", &save_ptr); token != NULL; token = strtok_r (NULL, "/", &save_ptr))
+    {
+      if (prev_token != NULL)
+        {
+          struct dir *prev_dir = dir;
+          dir = filesys_open_dir (dir, prev_token);
+          dir_close (prev_dir);
+        }
+      prev_token = token;
+    }
+
+  func (dir, prev_token, aux);
+  dir_close (dir);
+  lock_release (&global_filesys_lock);
 }
