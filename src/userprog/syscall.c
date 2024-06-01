@@ -341,7 +341,10 @@ static void
 handle_open_dir_and_filename_func (struct dir *dir, const char *filename, void *aux)
 {
   struct file **result = aux;
-  *result = filesys_open_file (dir, filename);
+  if (filename == NULL)
+    *result = file_open (dir_get_inode (dir));
+  else
+    *result = filesys_open_file (dir, filename);
 }
 
 static int
@@ -623,7 +626,11 @@ run_dir_and_filename_func_with_path (const char *path, dir_and_filename_func *fu
   s[strlen (path)] = '\0';
 
   lock_acquire (&global_filesys_lock);
-  struct dir *dir = dir_reopen (current_dir);
+  struct dir *dir;
+  if (s[0] == '/')
+    dir = dir_open_root ();
+  else
+    dir = dir_reopen (current_dir);
 
   char *token;
   char *save_ptr;
