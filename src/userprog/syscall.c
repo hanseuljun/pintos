@@ -42,6 +42,7 @@ static int handle_filesize (void *esp);
 static int handle_read (void *esp);
 static int handle_write (void *esp);
 static void handle_seek (void *esp);
+static unsigned handle_tell (void *esp);
 static void handle_close (void *esp);
 #ifdef VM
 static int handle_mmap (void *esp);
@@ -149,6 +150,9 @@ syscall_handler (struct intr_frame *f)
         return;
       case SYS_SEEK:
         handle_seek (f->esp);
+        return;
+      case SYS_TELL:
+        f->eax = handle_tell (f->esp);
         return;
       case SYS_CLOSE:
         handle_close (f->esp);
@@ -372,6 +376,23 @@ handle_seek (void *esp)
   lock_acquire (&global_filesys_lock);
   file_seek (fd_info->file, position);
   lock_release (&global_filesys_lock);
+}
+
+static unsigned
+handle_tell (void *esp)
+{
+  int fd = (int) get_argument(esp, 1);
+  if (!is_fd_for_file (fd))
+    {
+      syscall_exit (-1);
+      NOT_REACHED ();
+    }
+
+  struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  lock_acquire (&global_filesys_lock);
+  unsigned position = file_tell (fd_info->file);
+  lock_release (&global_filesys_lock);
+  return position;
 }
 
 static void
