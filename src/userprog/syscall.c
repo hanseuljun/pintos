@@ -64,7 +64,7 @@ static bool is_uaddr_valid (const void *uaddr);
 static bool is_fd_for_file (int fd);
 
 typedef void dir_and_filename_func (struct dir *dir, const char *filename, void *aux);
-static void run_dir_and_filename_func_with_path (const char *path, dir_and_filename_func *func, void *aux);
+static void run_dir_and_filename_func_with_path_str (const char *path_str, dir_and_filename_func *func, void *aux);
 
 void
 syscall_init (void) 
@@ -241,30 +241,30 @@ static void handle_create_dir_and_filename_func (struct dir *dir, const char *fi
 static bool
 handle_create (void *esp)
 {
-  const char *path = (const char *) get_argument(esp, 1);
+  const char *path_str = (const char *) get_argument(esp, 1);
   unsigned initial_size = (unsigned) get_argument(esp, 2);
 
-  /* Exit when path is pointing an invalid address. */
-  if (!is_uaddr_valid (path))
+  /* Exit when path_str is pointing an invalid address. */
+  if (!is_uaddr_valid (path_str))
     {
       syscall_exit (-1);
       NOT_REACHED ();
     }
-  /* Exit when path is NULL. */
-  if (path == NULL)
+  /* Exit when path_str is NULL. */
+  if (path_str == NULL)
     {
       syscall_exit (-1);
       NOT_REACHED ();
     }
-  /* Fail when path is an empty string. */
-  if (path[0] == '\0')
+  /* Fail when path_str is an empty string. */
+  if (path_str[0] == '\0')
     {
       return false;
     }
 
   struct handle_create_dir_and_filename_aux aux;
   aux.initial_size = initial_size;
-  run_dir_and_filename_func_with_path (path, handle_create_dir_and_filename_func, &aux);
+  run_dir_and_filename_func_with_path_str (path_str, handle_create_dir_and_filename_func, &aux);
 
   return aux.success;
 }
@@ -281,27 +281,27 @@ static void handle_remove_dir_and_filename_func (struct dir *dir, const char *fi
 static bool
 handle_remove (void *esp)
 {
-  const char *path = (const char *) get_argument(esp, 1);
-  /* Exit when path is pointing an invalid address. */
-  if (!is_uaddr_valid (path))
+  const char *path_str = (const char *) get_argument(esp, 1);
+  /* Exit when path_str is pointing an invalid address. */
+  if (!is_uaddr_valid (path_str))
     {
       syscall_exit (-1);
       NOT_REACHED ();
     }
-  /* Exit when path is NULL. */
-  if (path == NULL)
+  /* Exit when path_str is NULL. */
+  if (path_str == NULL)
     {
       syscall_exit (-1);
       NOT_REACHED ();
     }
-  /* Fail when path is an empty string. */
-  if (path[0] == '\0')
+  /* Fail when path_str is an empty string. */
+  if (path_str[0] == '\0')
     {
       return false;
     }
 
   bool success;
-  run_dir_and_filename_func_with_path (path, handle_remove_dir_and_filename_func, &success);
+  run_dir_and_filename_func_with_path_str (path_str, handle_remove_dir_and_filename_func, &success);
 
   return success;
 }
@@ -318,29 +318,29 @@ static void handle_open_dir_and_filename_func (struct dir *dir, const char *file
 static int
 handle_open (void *esp)
 {
-  const char *path = (const char *) get_argument(esp, 1);
+  const char *path_str = (const char *) get_argument(esp, 1);
   struct file *file;
   struct fd_info *fd_info;
 
   /* Exit when path is pointing an invalid address. */
-  if (!is_uaddr_valid (path))
+  if (!is_uaddr_valid (path_str))
     {
       syscall_exit (-1);
       NOT_REACHED ();
     }
   /* Exit when path is NULL. */
-  if (path == NULL)
+  if (path_str == NULL)
     {
       syscall_exit (-1);
       NOT_REACHED ();
     }
   /* Fail when path is an empty string. */
-  if (path[0] == '\0')
+  if (path_str[0] == '\0')
     {
       return -1;
     }
 
-  run_dir_and_filename_func_with_path (path, handle_open_dir_and_filename_func, &file);
+  run_dir_and_filename_func_with_path_str (path_str, handle_open_dir_and_filename_func, &file);
 
   if (file == NULL)
     return -1;
@@ -546,9 +546,9 @@ static void handle_chdir_dir_and_filename_func (struct dir *dir, const char *fil
 static bool
 handle_chdir (void *esp)
 {
-  char *path = (char *) get_argument(esp, 1);
+  char *path_str = (char *) get_argument(esp, 1);
 
-  run_dir_and_filename_func_with_path (path, handle_chdir_dir_and_filename_func, NULL);
+  run_dir_and_filename_func_with_path_str (path_str, handle_chdir_dir_and_filename_func, NULL);
 
   return true;
 }
@@ -567,15 +567,15 @@ static void handle_mkdir_dir_and_filename_func (struct dir *dir, const char *fil
 static bool
 handle_mkdir (void *esp)
 {
-  char *path = (char *) get_argument(esp, 1);
-  /* Fail when path is an empty string. */
-  if (path[0] == '\0')
+  char *path_str = (char *) get_argument(esp, 1);
+  /* Fail when path_str is an empty string. */
+  if (path_str[0] == '\0')
     {
       return false;
     }
 
   bool success;
-  run_dir_and_filename_func_with_path (path, handle_mkdir_dir_and_filename_func, &success);
+  run_dir_and_filename_func_with_path_str (path_str, handle_mkdir_dir_and_filename_func, &success);
 
   return success;
 }
@@ -658,11 +658,11 @@ is_fd_for_file (int fd)
 }
 
 static void
-run_dir_and_filename_func_with_path (const char *path, dir_and_filename_func *func, void *aux)
+run_dir_and_filename_func_with_path_str (const char *path_str, dir_and_filename_func *func, void *aux)
 {
-  char *s = malloc (strlen (path) + 1);
-  memcpy (s, path, strlen (path));
-  s[strlen (path)] = '\0';
+  char *s = malloc (strlen (path_str) + 1);
+  memcpy (s, path_str, strlen (path_str));
+  s[strlen (path_str)] = '\0';
 
   lock_acquire (&global_filesys_lock);
   struct dir *dir;
