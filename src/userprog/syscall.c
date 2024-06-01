@@ -233,11 +233,11 @@ handle_create (void *esp)
       return false;
     }
 
-  char *s = malloc (strlen (file_name));
-  strlcpy (s, file_name, strlen (s));
-  char *token, *save_ptr;
-  for (token = strtok_r (s, "/", &save_ptr); token != NULL; token = strtok_r (NULL, "/", &save_ptr))
-    printf ("'%s'\n", token);
+  // char *s = malloc (strlen (file_name));
+  // strlcpy (s, file_name, strlen (s));
+  // char *token, *save_ptr;
+  // for (token = strtok_r (s, "/", &save_ptr); token != NULL; token = strtok_r (NULL, "/", &save_ptr))
+  //   printf ("'%s'\n", token);
 
   lock_acquire (&global_filesys_lock);
   bool success = filesys_create_file_at_root (file_name, initial_size);

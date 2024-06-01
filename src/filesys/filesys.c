@@ -73,6 +73,17 @@ filesys_create_dir (struct dir *dir, const char *name)
   return success;
 }
 
+struct dir *
+filesys_open_dir (struct dir *dir, const char *name)
+{
+  struct inode *inode = NULL;
+
+  if (dir != NULL)
+    dir_lookup (dir, name, &inode);
+
+  return dir_open (inode);
+}
+
 bool
 filesys_create_file_at_root (const char *name, off_t initial_size) 
 {
