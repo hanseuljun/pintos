@@ -30,6 +30,7 @@ struct fd_info
 
 /* Map from fd values to file structs. */
 static struct fd_info *fd_info_map[FD_INFO_MAP_SIZE];
+static struct dir *current_dir;
 
 struct lock global_filesys_lock;
 
@@ -60,6 +61,7 @@ static bool is_fd_for_file (int fd);
 void
 syscall_init (void) 
 {
+  current_dir = dir_open_root ();
   lock_init (&global_filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }

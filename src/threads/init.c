@@ -117,7 +117,6 @@ main (void)
   input_init ();
 #ifdef USERPROG
   exception_init ();
-  syscall_init ();
 #endif
 
   /* Start thread scheduler and enable interrupts. */
@@ -130,6 +129,11 @@ main (void)
   ide_init ();
   locate_block_devices ();
   filesys_init (format_filesys);
+#endif
+
+#ifdef USERPROG
+  /* Initialize syscall after file system initialization. */
+  syscall_init ();
 #endif
 
 #ifdef VM
