@@ -105,7 +105,6 @@ bool allocate_inode_data_disks (struct inode_data *inode_data, off_t length)
   inode_data->direct_inode_disk.indirect_sector = INVALID_SECTOR;
   inode_data->direct_inode_disk.parent_doubly_indirect_sector = INVALID_SECTOR;
   inode_data->direct_inode_disk.magic = INODE_MAGIC;
-  inode_data->indirect_inode_disk.magic = INODE_MAGIC;
 
   for (size_t i = 0; i < sector_counts.direct_sector_count; i++)
     {
@@ -117,6 +116,8 @@ bool allocate_inode_data_disks (struct inode_data *inode_data, off_t length)
     {
       if (!free_map_allocate(1, &inode_data->direct_inode_disk.indirect_sector))
         return false;
+
+      inode_data->indirect_inode_disk.magic = INODE_MAGIC;
 
       for (size_t i = 0; i < sector_counts.indirect_sector_count; i++)
         {
@@ -130,12 +131,16 @@ bool allocate_inode_data_disks (struct inode_data *inode_data, off_t length)
       if (!free_map_allocate(1, &inode_data->direct_inode_disk.parent_doubly_indirect_sector))
         return false;
       
+      inode_data->parent_doubly_indirect_inode_disk.magic = INODE_MAGIC;
+
       size_t parent_sector_index = 0;
       size_t left_children_sector_count = sector_counts.doubly_indirect_sector_count;
       while (left_children_sector_count > 0)
         {
           if (!free_map_allocate(1, &inode_data->parent_doubly_indirect_inode_disk.sectors[parent_sector_index]))
             return false;
+
+          inode_data->children_doubly_indirect_inode_disk[parent_sector_index].magic = INODE_MAGIC;
 
           size_t child_sector_count = MIN(left_children_sector_count, INODE_DISK_MAX_SECTOR_COUNT);
           for (size_t i = 0; i < child_sector_count; i++)
@@ -182,34 +187,34 @@ void write_inode_data_disks (struct inode_data *inode_data, block_sector_t direc
         }
     }
 
-    if (sector_counts.doubly_indirect_sector_count > 0)
-      {
-        ASSERT (inode_data->direct_inode_disk.parent_doubly_indirect_sector != INVALID_SECTOR);
+  if (sector_counts.doubly_indirect_sector_count > 0)
+    {
+      ASSERT (inode_data->direct_inode_disk.parent_doubly_indirect_sector != INVALID_SECTOR);
 
-        block_sector_t parent_doubly_indrect_sector = inode_data->direct_inode_disk.parent_doubly_indirect_sector;
-        memcpy (fs_cache_get_buffer (parent_doubly_indrect_sector), &inode_data->parent_doubly_indirect_inode_disk, BLOCK_SECTOR_SIZE);
-        fs_cache_write (parent_doubly_indrect_sector);
+      block_sector_t parent_doubly_indrect_sector = inode_data->direct_inode_disk.parent_doubly_indirect_sector;
+      memcpy (fs_cache_get_buffer (parent_doubly_indrect_sector), &inode_data->parent_doubly_indirect_inode_disk, BLOCK_SECTOR_SIZE);
+      fs_cache_write (parent_doubly_indrect_sector);
 
-        size_t parent_sector_index = 0;
-        size_t left_children_sector_count = sector_counts.doubly_indirect_sector_count;
-        while (left_children_sector_count > 0)
-          {
-            block_sector_t child_doubly_indrect_sector = inode_data->parent_doubly_indirect_inode_disk.sectors[parent_sector_index];
-            memcpy (fs_cache_get_buffer (child_doubly_indrect_sector), &inode_data->children_doubly_indirect_inode_disk[parent_sector_index], BLOCK_SECTOR_SIZE);
-            fs_cache_write (child_doubly_indrect_sector);
+      size_t parent_sector_index = 0;
+      size_t left_children_sector_count = sector_counts.doubly_indirect_sector_count;
+      while (left_children_sector_count > 0)
+        {
+          block_sector_t child_doubly_indrect_sector = inode_data->parent_doubly_indirect_inode_disk.sectors[parent_sector_index];
+          memcpy (fs_cache_get_buffer (child_doubly_indrect_sector), &inode_data->children_doubly_indirect_inode_disk[parent_sector_index], BLOCK_SECTOR_SIZE);
+          fs_cache_write (child_doubly_indrect_sector);
 
-            size_t child_sector_count = MIN(left_children_sector_count, INODE_DISK_MAX_SECTOR_COUNT);
-            for (size_t i = 0; i < child_sector_count; i++)
-              {
-                block_sector_t sector = inode_data->children_doubly_indirect_inode_disk[parent_sector_index].sectors[i];
-                memset (fs_cache_get_buffer (sector), 0, BLOCK_SECTOR_SIZE);
-                fs_cache_write (sector);
-              }
+          size_t child_sector_count = MIN(left_children_sector_count, INODE_DISK_MAX_SECTOR_COUNT);
+          for (size_t i = 0; i < child_sector_count; i++)
+            {
+              block_sector_t sector = inode_data->children_doubly_indirect_inode_disk[parent_sector_index].sectors[i];
+              memset (fs_cache_get_buffer (sector), 0, BLOCK_SECTOR_SIZE);
+              fs_cache_write (sector);
+            }
 
-            parent_sector_index++;
-            left_children_sector_count -= child_sector_count;
-          }
-      }
+          parent_sector_index++;
+          left_children_sector_count -= child_sector_count;
+        }
+    }
 }
 
 struct inode_data *
@@ -220,6 +225,7 @@ inode_data_open (block_sector_t sector)
     return NULL;
 
   lock_acquire (fs_cache_get_lock ());
+
   fs_cache_read (sector);
   memcpy (&inode_data->direct_inode_disk, fs_cache_get_buffer (sector), BLOCK_SECTOR_SIZE);
   ASSERT (inode_data->direct_inode_disk.magic == INODE_MAGIC);
@@ -227,12 +233,39 @@ inode_data_open (block_sector_t sector)
   struct inode_sector_counts sector_counts = bytes_to_sector_counts (inode_data->direct_inode_disk.length);
   if (sector_counts.indirect_sector_count > 0)
     {
-      ASSERT (inode_data->direct_inode_disk.indirect_sector != INVALID_SECTOR);
+      block_sector_t indirect_sector = inode_data->direct_inode_disk.indirect_sector;
+      ASSERT (indirect_sector != INVALID_SECTOR);
 
-      fs_cache_read (inode_data->direct_inode_disk.indirect_sector);
-      memcpy (&inode_data->indirect_inode_disk, fs_cache_get_buffer (inode_data->direct_inode_disk.indirect_sector), BLOCK_SECTOR_SIZE);
+      fs_cache_read (indirect_sector);
+      memcpy (&inode_data->indirect_inode_disk, fs_cache_get_buffer (indirect_sector), BLOCK_SECTOR_SIZE);
       ASSERT (inode_data->indirect_inode_disk.magic == INODE_MAGIC);
     }
+
+  if (sector_counts.doubly_indirect_sector_count > 0)
+    {
+      block_sector_t parent_doubly_indirect_sector = inode_data->direct_inode_disk.parent_doubly_indirect_sector;
+      ASSERT (parent_doubly_indirect_sector != INVALID_SECTOR);
+
+      // printf ("parent_doubly_indirect_sector: %d\n", parent_doubly_indirect_sector);
+      fs_cache_read (parent_doubly_indirect_sector);
+      memcpy (&inode_data->parent_doubly_indirect_inode_disk, fs_cache_get_buffer (parent_doubly_indirect_sector), BLOCK_SECTOR_SIZE);
+      ASSERT (inode_data->parent_doubly_indirect_inode_disk.magic == INODE_MAGIC);
+
+      size_t parent_sector_index = 0;
+      size_t left_children_sector_count = sector_counts.doubly_indirect_sector_count;
+      while (left_children_sector_count > 0)
+        {
+          block_sector_t child_doubly_indrect_sector = inode_data->parent_doubly_indirect_inode_disk.sectors[parent_sector_index];
+          fs_cache_read (child_doubly_indrect_sector);
+          memcpy (&inode_data->children_doubly_indirect_inode_disk[parent_sector_index], fs_cache_get_buffer (child_doubly_indrect_sector), BLOCK_SECTOR_SIZE);
+          ASSERT (inode_data->children_doubly_indirect_inode_disk[parent_sector_index].magic == INODE_MAGIC);
+
+          size_t child_sector_count = MIN(left_children_sector_count, INODE_DISK_MAX_SECTOR_COUNT);
+          parent_sector_index++;
+          left_children_sector_count -= child_sector_count;
+        }
+    }
+
   lock_release (fs_cache_get_lock ());
 
   return inode_data;
@@ -301,9 +334,20 @@ inode_data_sector (const struct inode_data *inode_data, off_t pos)
     {
       size_t index = pos / BLOCK_SECTOR_SIZE;
       if (index < INODE_DISK_MAX_SECTOR_COUNT)
-        return inode_data->direct_inode_disk.sectors[index];
+        {
+          return inode_data->direct_inode_disk.sectors[index];
+        }
+      else if (index < INODE_DISK_MAX_SECTOR_COUNT * 2)
+        {
+          return inode_data->indirect_inode_disk.sectors[index - INODE_DISK_MAX_SECTOR_COUNT];
+        }
       else
-        return inode_data->indirect_inode_disk.sectors[index - INODE_DISK_MAX_SECTOR_COUNT];
+        {
+          size_t doubly_indirect_index = index - (INODE_DISK_MAX_SECTOR_COUNT * 2);
+          size_t parent_index = doubly_indirect_index / INODE_DISK_MAX_SECTOR_COUNT;
+          size_t child_index = doubly_indirect_index % INODE_DISK_MAX_SECTOR_COUNT;
+          return inode_data->children_doubly_indirect_inode_disk[parent_index].sectors[child_index];
+        }
     }
   else
     return -1;
