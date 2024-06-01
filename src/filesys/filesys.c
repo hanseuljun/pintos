@@ -60,6 +60,20 @@ filesys_create_file (struct dir *dir, const char *name, off_t initial_size)
 }
 
 bool
+filesys_create_dir (struct dir *dir, const char *name)
+{
+  block_sector_t inode_sector = 0;
+  bool success = (dir != NULL
+                  && free_map_allocate (1, &inode_sector)
+                  && dir_create (inode_sector, 0)
+                  && dir_add (dir, name, inode_sector));
+  if (!success && inode_sector != 0) 
+    free_map_release (inode_sector, 1);
+
+  return success;
+}
+
+bool
 filesys_create_file_at_root (const char *name, off_t initial_size) 
 {
   struct dir *dir = dir_open_root ();
@@ -75,7 +89,7 @@ filesys_create_file_at_root (const char *name, off_t initial_size)
    Fails if no file named NAME exists,
    or if an internal memory allocation fails. */
 struct file *
-filesys_open (const char *name)
+filesys_open_file_at_root (const char *name)
 {
   struct dir *dir = dir_open_root ();
   struct inode *inode = NULL;

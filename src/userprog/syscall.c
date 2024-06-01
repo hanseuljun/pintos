@@ -233,6 +233,12 @@ handle_create (void *esp)
       return false;
     }
 
+  char *s = malloc (strlen (file_name));
+  strlcpy (s, file_name, strlen (s));
+  char *token, *save_ptr;
+  for (token = strtok_r (s, "/", &save_ptr); token != NULL; token = strtok_r (NULL, "/", &save_ptr))
+    printf ("'%s'\n", token);
+
   lock_acquire (&global_filesys_lock);
   bool success = filesys_create_file_at_root (file_name, initial_size);
   lock_release (&global_filesys_lock);
@@ -288,7 +294,7 @@ handle_open (void *esp)
     }
 
   lock_acquire (&global_filesys_lock);
-  file = filesys_open (file_name);
+  file = filesys_open_file_at_root (file_name);
   lock_release (&global_filesys_lock);
   if (file == NULL)
     return -1;
@@ -491,7 +497,8 @@ handle_mkdir (void *esp)
     return false;
 
   struct dir *dir = dir_open_root ();
-  dir_add (dir, path, inode_get_inumber (dir_get_inode (dir)));
+  filesys_create_dir (dir, path);
+  dir_close (dir);
 
   return true;
 }

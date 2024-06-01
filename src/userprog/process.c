@@ -57,7 +57,7 @@ process_execute (const char *cmdline)
 
   /* Examine if the file matching file_name exists. */
   lock_acquire (&global_filesys_lock);
-  struct file *file = filesys_open (file_name);
+  struct file *file = filesys_open_file_at_root (file_name);
   file_close (file);
   lock_release (&global_filesys_lock);
   if (file == NULL)
@@ -343,7 +343,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   const char *file_name = tokened_cmdline;
 
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open_file_at_root (file_name);
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
