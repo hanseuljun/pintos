@@ -7,6 +7,7 @@
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "filesys/fs-cache.h"
+#include "filesys/inode.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "threads/interrupt.h"
@@ -406,9 +407,13 @@ handle_write (void *esp)
 
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
   lock_acquire (&global_filesys_lock);
-  int bytes_written = file_write (fd_info->file, buffer, size);
+  int result;
+  if (inode_isdir (file_get_inode (fd_info->file)))
+    result = -1;
+  else
+    result = file_write (fd_info->file, buffer, size);
   lock_release (&global_filesys_lock);
-  return bytes_written;
+  return result;
 }
 
 static void
@@ -528,7 +533,7 @@ handle_chdir (void *esp)
 }
 
 static void
-handle_chdir_dir_and_filename_func (struct dir *dir, const char *filename, void *aux)
+handle_chdir_dir_and_filename_func (struct dir *dir, const char *filename, void *aux UNUSED)
 {
   current_dir = filesys_open_dir (dir, filename);
 }
