@@ -246,7 +246,6 @@ inode_data_open (block_sector_t sector)
       block_sector_t parent_doubly_indirect_sector = inode_data->direct_inode_disk.parent_doubly_indirect_sector;
       ASSERT (parent_doubly_indirect_sector != INVALID_SECTOR);
 
-      // printf ("parent_doubly_indirect_sector: %d\n", parent_doubly_indirect_sector);
       fs_cache_read (parent_doubly_indirect_sector);
       memcpy (&inode_data->parent_doubly_indirect_inode_disk, fs_cache_get_buffer (parent_doubly_indirect_sector), BLOCK_SECTOR_SIZE);
       ASSERT (inode_data->parent_doubly_indirect_inode_disk.magic == INODE_MAGIC);
@@ -280,6 +279,20 @@ inode_data_release (struct inode_data *inode_data)
     free_map_release (inode_data->direct_inode_disk.sectors[i], 1);
   for (size_t i = 0; i < sector_counts.indirect_sector_count; i++)
     free_map_release (inode_data->indirect_inode_disk.sectors[i], 1);
+
+  size_t parent_sector_index = 0;
+  size_t left_children_sector_count = sector_counts.doubly_indirect_sector_count;
+  while (left_children_sector_count > 0)
+    {
+      free_map_release (inode_data->parent_doubly_indirect_inode_disk.sectors[parent_sector_index], 1);
+
+      size_t child_sector_count = MIN(left_children_sector_count, INODE_DISK_MAX_SECTOR_COUNT);
+      for (size_t i = 0; i < child_sector_count; i++)
+        free_map_release (inode_data->children_doubly_indirect_inode_disk[parent_sector_index].sectors[i], 1);
+
+      parent_sector_index++;
+      left_children_sector_count -= child_sector_count;
+    }
 }
 
 bool
