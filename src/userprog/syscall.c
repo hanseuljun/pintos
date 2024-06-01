@@ -55,6 +55,7 @@ static void handle_munmap (void *esp);
 #endif
 static bool handle_chdir (void *esp);
 static bool handle_mkdir (void *esp);
+static bool handle_readdir (void *esp);
 static uint32_t get_argument (void *esp, size_t idx);
 static int find_available_fd (void);
 static bool is_uaddr_valid (const void *uaddr);
@@ -185,6 +186,9 @@ syscall_handler (struct intr_frame *f)
         return;
       case SYS_MKDIR:
         f->eax = handle_mkdir (f->esp);
+        return;
+      case SYS_READDIR:
+        f->eax = handle_readdir (f->esp);
         return;
 #endif
     }
@@ -557,6 +561,12 @@ handle_mkdir (void *esp)
   run_dir_and_filename_func_with_path (path, handle_mkdir_dir_and_filename_func, &success);
 
   return success;
+}
+
+static bool
+handle_readdir (void *esp)
+{
+  return false;
 }
 
 static void
