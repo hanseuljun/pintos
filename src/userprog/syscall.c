@@ -3,6 +3,7 @@
 #include <string.h>
 #include <syscall-nr.h>
 #include "devices/shutdown.h"
+#include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "userprog/pagedir.h"
@@ -49,6 +50,7 @@ static void handle_close (void *esp);
 static int handle_mmap (void *esp);
 static void handle_munmap (void *esp);
 #endif
+static bool handle_chdir (void *esp);
 static bool handle_mkdir (void *esp);
 static uint32_t get_argument (void *esp, size_t idx);
 static int find_available_fd (void);
@@ -166,6 +168,9 @@ syscall_handler (struct intr_frame *f)
       case SYS_MUNMAP:
         handle_munmap (f->esp);
         return;
+      case SYS_CHDIR:
+        f->eax = handle_chdir (f->esp);
+        return;
       case SYS_MKDIR:
         f->eax = handle_mkdir (f->esp);
         return;
@@ -229,7 +234,7 @@ handle_create (void *esp)
     }
 
   lock_acquire (&global_filesys_lock);
-  bool success = filesys_create (file_name, initial_size);
+  bool success = filesys_create_at_root (file_name, initial_size);
   lock_release (&global_filesys_lock);
   return success;
 }
@@ -471,11 +476,22 @@ handle_munmap (void *esp)
 #endif
 
 static bool
-handle_mkdir (void *esp)
+handle_chdir (void *esp)
 {
   char *dir = (char *) get_argument(esp, 1);
-  if (strlen(dir) == 0)
+
+  return true;
+}
+
+static bool
+handle_mkdir (void *esp)
+{
+  char *path = (char *) get_argument(esp, 1);
+  if (strlen(path) == 0)
     return false;
+
+  struct dir *dir = dir_open_root ();
+  dir_add (dir, path, inode_get_inumber (dir_get_inode (dir)));
 
   return true;
 }
