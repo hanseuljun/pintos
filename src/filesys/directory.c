@@ -26,7 +26,15 @@ struct dir_entry
 bool
 dir_create (block_sector_t sector, size_t entry_cnt)
 {
-  return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
+  if (!inode_create (sector, sizeof (unsigned) + entry_cnt * sizeof (struct dir_entry)))
+    return false;
+
+  struct inode *inode = inode_open (sector);
+  unsigned magic = DIR_MAGIC;
+  inode_write_at (inode, &magic, sizeof (magic), 0);
+  inode_close (inode);
+
+  return true;
 }
 
 /* Opens and returns the directory for the given INODE, of which
@@ -38,7 +46,8 @@ dir_open (struct inode *inode)
   if (inode != NULL && dir != NULL)
     {
       dir->inode = inode;
-      dir->pos = 0;
+      /* Set position to right after the magic number. */
+      dir->pos = sizeof (unsigned);
       return dir;
     }
   else

@@ -11,6 +11,9 @@
    retained, but much longer full path names must be allowed. */
 #define NAME_MAX 14
 
+/* Identifies an directory. */
+#define DIR_MAGIC 0xd32e444c
+
 struct inode;
 
 /* Opening and closing directories. */

@@ -3,6 +3,7 @@
 #include <debug.h>
 #include <math.h>
 #include <string.h>
+#include "filesys/directory.h"
 #include "filesys/fs-cache.h"
 #include "filesys/free-map.h"
 #include "filesys/inode_data.h"
@@ -290,4 +291,12 @@ off_t
 inode_length (const struct inode *inode)
 {
   return inode_data_length (inode->data);
+}
+
+bool
+inode_isdir (struct inode *inode)
+{
+  unsigned magic;
+  inode_read_at (inode, &magic, sizeof (magic), 0);
+  return magic == DIR_MAGIC;
 }
