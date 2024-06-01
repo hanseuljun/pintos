@@ -98,6 +98,8 @@ inode_data_create (block_sector_t sector, off_t length)
 
 bool allocate_inode_data_disks (struct inode_data *inode_data, off_t length)
 {
+  ASSERT (lock_held_by_current_thread (fs_cache_get_lock ()));
+
   struct inode_sector_counts sector_counts = bytes_to_sector_counts (length);
   inode_data->direct_inode_disk.length = length;
   inode_data->direct_inode_disk.indirect_sector = INVALID_SECTOR;
@@ -152,6 +154,8 @@ bool allocate_inode_data_disks (struct inode_data *inode_data, off_t length)
 
 void write_inode_data_disks (struct inode_data *inode_data, block_sector_t direct_sector, off_t length)
 {
+  ASSERT (lock_held_by_current_thread (fs_cache_get_lock ()));
+
   struct inode_sector_counts sector_counts = bytes_to_sector_counts (length);
   memcpy (fs_cache_get_buffer (direct_sector), &inode_data->direct_inode_disk, BLOCK_SECTOR_SIZE);
   fs_cache_write (direct_sector);
@@ -220,8 +224,11 @@ inode_data_open (block_sector_t sector)
   memcpy (&inode_data->direct_inode_disk, fs_cache_get_buffer (sector), BLOCK_SECTOR_SIZE);
   ASSERT (inode_data->direct_inode_disk.magic == INODE_MAGIC);
 
-  if (inode_data->direct_inode_disk.indirect_sector != INVALID_SECTOR)
+  struct inode_sector_counts sector_counts = bytes_to_sector_counts (inode_data->direct_inode_disk.length);
+  if (sector_counts.indirect_sector_count > 0)
     {
+      ASSERT (inode_data->direct_inode_disk.indirect_sector != INVALID_SECTOR);
+
       fs_cache_read (inode_data->direct_inode_disk.indirect_sector);
       memcpy (&inode_data->indirect_inode_disk, fs_cache_get_buffer (inode_data->direct_inode_disk.indirect_sector), BLOCK_SECTOR_SIZE);
       ASSERT (inode_data->indirect_inode_disk.magic == INODE_MAGIC);
