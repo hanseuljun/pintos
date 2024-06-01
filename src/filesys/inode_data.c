@@ -401,6 +401,21 @@ inode_data_flush (struct inode_data *inode_data, block_sector_t sector)
       fs_cache_write (indirect_sector);
     }
 
+  if (sector_counts.doubly_indirect_sector_count > 0)
+    {
+      size_t parent_doubly_indirect_sector = inode_data->direct_inode_disk.parent_doubly_indirect_sector;
+      memcpy (fs_cache_get_buffer (parent_doubly_indirect_sector), &inode_data->parent_doubly_indirect_inode_disk, BLOCK_SECTOR_SIZE);
+      fs_cache_write (parent_doubly_indirect_sector);
+
+      size_t parent_doubly_indirect_sector_count = DIV_ROUND_UP(sector_counts.doubly_indirect_sector_count, INODE_DISK_MAX_SECTOR_COUNT);
+      for (size_t i = 0; i <parent_doubly_indirect_sector_count; i++)
+        {
+          size_t sector = inode_data->parent_doubly_indirect_inode_disk.sectors[i];
+          memcpy (fs_cache_get_buffer (sector), &inode_data->children_doubly_indirect_inode_disk[i], BLOCK_SECTOR_SIZE);
+          fs_cache_write (sector);
+        }
+    }
+
   lock_release (fs_cache_get_lock ());
 }
 
