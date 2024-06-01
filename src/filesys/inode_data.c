@@ -340,10 +340,45 @@ inode_data_extend (struct inode_data *inode_data, off_t length)
       fs_cache_write (sector);
     }
 
-  // TODO: Implement doubly indirect cases.
-  size_t doubly_indirect_sector_count_diff = target_sector_counts.doubly_indirect_sector_count - current_sector_counts.doubly_indirect_sector_count;
-  if (doubly_indirect_sector_count_diff > 0)
-    return false;
+  if (target_sector_counts.doubly_indirect_sector_count > 0 && current_sector_counts.doubly_indirect_sector_count == 0)
+    {
+      block_sector_t sector;
+      if (!free_map_allocate(1, &sector))
+        return false;
+
+      inode_data->direct_inode_disk.parent_doubly_indirect_sector = sector;
+      inode_data->parent_doubly_indirect_inode_disk.magic = INODE_MAGIC;
+      memcpy (fs_cache_get_buffer (sector), &inode_data->parent_doubly_indirect_inode_disk, BLOCK_SECTOR_SIZE);
+      fs_cache_write (sector);
+    }
+  
+  for (size_t doubly_indirect_sector_index = current_sector_counts.doubly_indirect_sector_count;
+              doubly_indirect_sector_index < target_sector_counts.doubly_indirect_sector_count;
+              doubly_indirect_sector_index++)
+    {
+      size_t parent_index = doubly_indirect_sector_index / INODE_DISK_MAX_SECTOR_COUNT;
+      size_t child_index = doubly_indirect_sector_index % INODE_DISK_MAX_SECTOR_COUNT;
+      
+      if (child_index == 0)
+        {
+          block_sector_t sector;
+          if (!free_map_allocate(1, &sector))
+            return false;
+
+          inode_data->parent_doubly_indirect_inode_disk.sectors[parent_index] = sector;
+          inode_data->children_doubly_indirect_inode_disk[parent_index].magic = INODE_MAGIC;
+          memcpy (fs_cache_get_buffer (sector), &inode_data->children_doubly_indirect_inode_disk[parent_index], BLOCK_SECTOR_SIZE);
+          fs_cache_write (sector);
+        }
+      
+      block_sector_t sector;
+      if (!free_map_allocate(1, &sector))
+        return false;
+
+      inode_data->children_doubly_indirect_inode_disk[parent_index].sectors[child_index] = sector;
+      memcpy (fs_cache_get_buffer (sector), &inode_data->children_doubly_indirect_inode_disk[parent_index].sectors[child_index], BLOCK_SECTOR_SIZE);
+      fs_cache_write (sector);
+    }
 
   inode_data->direct_inode_disk.length += length;
   return true;
