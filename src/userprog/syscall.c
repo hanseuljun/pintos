@@ -233,15 +233,33 @@ handle_create (void *esp)
       return false;
     }
 
-  // char *s = malloc (strlen (file_name));
-  // strlcpy (s, file_name, strlen (s));
-  // char *token, *save_ptr;
-  // for (token = strtok_r (s, "/", &save_ptr); token != NULL; token = strtok_r (NULL, "/", &save_ptr))
-  //   printf ("'%s'\n", token);
+  struct dir *dir = dir_open_root ();
+
+  char *s = malloc (strlen (file_name) + 1);
+  memcpy (s, file_name, strlen (file_name));
+  s[strlen (file_name)] = '\0';
+
+  char *token;
+  char *save_ptr;
+  char *prev_token = NULL;
+  for (token = strtok_r (s, "/", &save_ptr); token != NULL; token = strtok_r (NULL, "/", &save_ptr))
+    {
+      if (prev_token != NULL)
+        {
+          struct dir *prev_dir = dir;
+          dir = filesys_open_dir (dir, prev_token);
+          dir_close (prev_dir);
+        }
+      prev_token = token;
+    }
 
   lock_acquire (&global_filesys_lock);
-  bool success = filesys_create_file_at_root (file_name, initial_size);
+  bool success = filesys_create_file (dir, prev_token, initial_size);
   lock_release (&global_filesys_lock);
+
+  free(s);
+  dir_close (dir);
+
   return success;
 }
 
