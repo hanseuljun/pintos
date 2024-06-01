@@ -8,6 +8,7 @@
 #include "filesys/filesys.h"
 #include "filesys/fs-cache.h"
 #include "filesys/inode.h"
+#include "filesys/path.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "threads/interrupt.h"
@@ -660,6 +661,10 @@ is_fd_for_file (int fd)
 static void
 run_dir_and_filename_func_with_path_str (const char *path_str, dir_and_filename_func *func, void *aux)
 {
+  // struct path *path = path_create (path_str);
+  // char *test_path_str = path_to_string (path);
+  // printf ("path_str: %s, test_path_str: %s\n", path_str, test_path_str);
+  
   char *s = malloc (strlen (path_str) + 1);
   memcpy (s, path_str, strlen (path_str));
   s[strlen (path_str)] = '\0';
