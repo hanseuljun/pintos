@@ -101,6 +101,12 @@ filesys_open_dir (struct dir *dir, const char *name)
 }
 
 bool
+filesys_remove (struct dir *dir, const char *name)
+{
+  return dir != NULL && dir_remove (dir, name);
+}
+
+bool
 filesys_create_file_at_root (const char *name, off_t initial_size) 
 {
   struct dir *dir = dir_open_root ();
@@ -128,7 +134,7 @@ bool
 filesys_remove_at_root (const char *name) 
 {
   struct dir *dir = dir_open_root ();
-  bool success = dir != NULL && dir_remove (dir, name);
+  bool success = filesys_remove (dir, name);
   dir_close (dir); 
 
   return success;

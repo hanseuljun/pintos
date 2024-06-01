@@ -276,32 +276,41 @@ handle_create_dir_and_filename_func (struct dir *dir, const char *filename, void
   handle_create_dir_and_filename_aux->success = filesys_create_file (dir, filename, handle_create_dir_and_filename_aux->initial_size);
 }
 
+static void handle_remove_dir_and_filename_func (struct dir *dir, const char *filename, void *aux);
+
 static bool
 handle_remove (void *esp)
 {
-  const char *file_name = (const char *) get_argument(esp, 1);
-  /* Exit when file_name is pointing an invalid address. */
-  if (!is_uaddr_valid (file_name))
+  const char *path = (const char *) get_argument(esp, 1);
+  /* Exit when path is pointing an invalid address. */
+  if (!is_uaddr_valid (path))
     {
       syscall_exit (-1);
       NOT_REACHED ();
     }
-  /* Exit when file_name is NULL. */
-  if (file_name == NULL)
+  /* Exit when path is NULL. */
+  if (path == NULL)
     {
       syscall_exit (-1);
       NOT_REACHED ();
     }
-  /* Fail when file_name is an empty string. */
-  if (file_name[0] == '\0')
+  /* Fail when path is an empty string. */
+  if (path[0] == '\0')
     {
       return false;
     }
 
-  lock_acquire (&global_filesys_lock);
-  bool success = filesys_remove_at_root (file_name);
-  lock_release (&global_filesys_lock);
+  bool success;
+  run_dir_and_filename_func_with_path (path, handle_remove_dir_and_filename_func, &success);
+
   return success;
+}
+
+static void
+handle_remove_dir_and_filename_func (struct dir *dir, const char *filename, void *aux)
+{
+  bool *result = aux;
+  *result = filesys_remove (dir, filename);
 }
 
 static void handle_open_dir_and_filename_func (struct dir *dir, const char *filename, void *aux);
