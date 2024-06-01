@@ -304,25 +304,49 @@ inode_data_extend (struct inode_data *inode_data, off_t length)
   struct inode_sector_counts current_sector_counts = bytes_to_sector_counts (current_length);
   struct inode_sector_counts target_sector_counts = bytes_to_sector_counts (target_length);
 
-  // TODO: Do not increase inode length when extension fails.
-  inode_data->direct_inode_disk.length += length;
-
-  if (target_sector_counts.direct_sector_count == current_sector_counts.direct_sector_count + 1)
+  size_t direct_sector_count_diff = target_sector_counts.direct_sector_count - current_sector_counts.direct_sector_count;
+  for (size_t i = 0; i < direct_sector_count_diff; i++)
     {
       block_sector_t sector;
       if (!free_map_allocate(1, &sector))
         return false;
 
-      inode_data->direct_inode_disk.sectors[current_sector_counts.direct_sector_count] = sector;
+      inode_data->direct_inode_disk.sectors[current_sector_counts.direct_sector_count + i] = sector;
       memset (fs_cache_get_buffer (sector), 0, BLOCK_SECTOR_SIZE);
       fs_cache_write (sector);
-      
-      return true;
     }
 
-  // TODO: Implement other cases.
+  if (target_sector_counts.indirect_sector_count > 0 && current_sector_counts.indirect_sector_count == 0)
+    {
+      block_sector_t sector;
+      if (!free_map_allocate(1, &sector))
+        return false;
 
-  return false;
+      inode_data->direct_inode_disk.indirect_sector = sector;
+      inode_data->indirect_inode_disk.magic = INODE_MAGIC;
+      memcpy (fs_cache_get_buffer (sector), &inode_data->indirect_inode_disk, BLOCK_SECTOR_SIZE);
+      fs_cache_write (sector);
+    }
+
+  size_t indirect_sector_count_diff = target_sector_counts.indirect_sector_count - current_sector_counts.indirect_sector_count;
+  for (size_t i = 0; i < indirect_sector_count_diff; i++)
+    {
+      block_sector_t sector;
+      if (!free_map_allocate(1, &sector))
+        return false;
+
+      inode_data->indirect_inode_disk.sectors[current_sector_counts.indirect_sector_count + i] = sector;
+      memset (fs_cache_get_buffer (sector), 0, BLOCK_SECTOR_SIZE);
+      fs_cache_write (sector);
+    }
+
+  // TODO: Implement doubly indirect cases.
+  size_t doubly_indirect_sector_count_diff = target_sector_counts.doubly_indirect_sector_count - current_sector_counts.doubly_indirect_sector_count;
+  if (doubly_indirect_sector_count_diff > 0)
+    return false;
+
+  inode_data->direct_inode_disk.length += length;
+  return true;
 }
 
 void
