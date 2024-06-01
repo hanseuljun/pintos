@@ -1,5 +1,6 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
+#include <string.h>
 #include <syscall-nr.h>
 #include "devices/shutdown.h"
 #include "filesys/file.h"
@@ -48,6 +49,7 @@ static void handle_close (void *esp);
 static int handle_mmap (void *esp);
 static void handle_munmap (void *esp);
 #endif
+static bool handle_mkdir (void *esp);
 static uint32_t get_argument (void *esp, size_t idx);
 static int find_available_fd (void);
 static bool is_uaddr_valid (const void *uaddr);
@@ -163,6 +165,9 @@ syscall_handler (struct intr_frame *f)
         return;
       case SYS_MUNMAP:
         handle_munmap (f->esp);
+        return;
+      case SYS_MKDIR:
+        f->eax = handle_mkdir (f->esp);
         return;
 #endif
     }
@@ -464,6 +469,16 @@ handle_munmap (void *esp)
   mmap_table_remove (mapping);
 }
 #endif
+
+static bool
+handle_mkdir (void *esp)
+{
+  char *dir = (char *) get_argument(esp, 1);
+  if (strlen(dir) == 0)
+    return false;
+
+  return true;
+}
 
 static uint32_t
 get_argument (void *esp, size_t idx)
