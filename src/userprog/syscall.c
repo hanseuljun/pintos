@@ -58,6 +58,7 @@ static void handle_munmap (void *esp);
 static bool handle_chdir (void *esp);
 static bool handle_mkdir (void *esp);
 static bool handle_readdir (void *esp);
+static bool handle_isdir (void *esp);
 static int handle_inumber (void *esp);
 
 static uint32_t get_argument (void *esp, size_t idx);
@@ -191,6 +192,9 @@ syscall_handler (struct intr_frame *f)
         return;
       case SYS_READDIR:
         f->eax = handle_readdir (f->esp);
+        return;
+      case SYS_ISDIR:
+        f->eax = handle_isdir (f->esp);
         return;
       case SYS_INUMBER:
         f->eax = handle_inumber (f->esp);
@@ -656,6 +660,27 @@ handle_readdir (void *esp)
   lock_release (&global_filesys_lock);
 
   return success;
+}
+
+static bool
+handle_isdir (void *esp)
+{
+  char *path_str = (char *) get_argument(esp, 1);
+
+  lock_acquire (&global_filesys_lock);
+
+  struct path *new_path = path_copy (current_path);
+  path_push_back (new_path, path_str);
+  path_sanitize (new_path);
+
+  struct dir *dir = path_get_dir (new_path);
+  bool exists = dir != NULL;
+  dir_close (dir);
+  path_release (new_path);
+
+  lock_release (&global_filesys_lock);
+
+  return exists;
 }
 
 static int
