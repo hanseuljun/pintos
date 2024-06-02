@@ -32,7 +32,6 @@ path_create (const char *path_str)
   list_init (&path->elem_list);
 
   char *s = copy_string (path_str);
-
   char *token;
   char *save_ptr;
   for (token = strtok_r (s, "/", &save_ptr); token != NULL; token = strtok_r (NULL, "/", &save_ptr))
@@ -58,6 +57,68 @@ path_release(struct path *path)
     }
 
   free (path);
+}
+
+struct path *
+path_copy(struct path *path)
+{
+  struct path *new_path = malloc (sizeof (new_path));
+  list_init (&new_path->elem_list);
+
+  for (struct list_elem *e = list_begin (&path->elem_list); e != list_end (&path->elem_list);
+       e = list_next (e))
+    {
+      struct path_elem *elem = list_entry (e, struct path_elem, list_elem);
+      struct path_elem *new_path_elem = malloc (sizeof (new_path_elem));
+      new_path_elem->name = copy_string (elem->name);
+      list_push_back (&new_path->elem_list, &new_path_elem->list_elem);
+    }
+
+  return new_path;
+}
+
+struct dir *
+path_get_dir(struct path *path)
+{
+  struct dir *dir = dir_open_root ();
+
+  for (struct list_elem *e = list_begin (&path->elem_list); e != list_end (&path->elem_list);
+       e = list_next (e))
+    {
+      struct path_elem *elem = list_entry (e, struct path_elem, list_elem);
+      struct dir *prev_dir = dir;
+      dir = filesys_open_dir (dir, elem->name);
+      dir_close (prev_dir);
+    }
+
+  return dir;
+}
+
+void
+path_push_back(struct path *path, const char *str)
+{
+  char *s = copy_string (str);
+  char *token;
+  char *save_ptr;
+  for (token = strtok_r (s, "/", &save_ptr); token != NULL; token = strtok_r (NULL, "/", &save_ptr))
+    {
+      struct path_elem *path_elem = malloc (sizeof (path_elem));
+      path_elem->name = copy_string (token);
+      list_push_back (&path->elem_list, &path_elem->list_elem);
+    }
+}
+
+char *
+path_pop_back(struct path *path)
+{
+  if (list_empty (&path->elem_list))
+    return NULL;
+
+  struct list_elem *e = list_pop_back (&path->elem_list);
+  struct path_elem *elem = list_entry (e, struct path_elem, list_elem);
+  char *name = elem->name;
+  free (elem);
+  return name;
 }
 
 char *path_get_string(struct path *path)
@@ -87,34 +148,4 @@ char *path_get_string(struct path *path)
   
   path_str[path_str_length] = '\0';
   return path_str;
-}
-
-struct dir *
-path_get_dir(struct path *path)
-{
-  struct dir *dir = dir_open_root ();
-
-  for (struct list_elem *e = list_begin (&path->elem_list); e != list_end (&path->elem_list);
-       e = list_next (e))
-    {
-      struct path_elem *elem = list_entry (e, struct path_elem, list_elem);
-      struct dir *prev_dir = dir;
-      dir = filesys_open_dir (dir, elem->name);
-      dir_close (prev_dir);
-    }
-
-  return dir;
-}
-
-const char *
-path_pop_back(struct path *path)
-{
-  if (list_empty (&path->elem_list))
-    return NULL;
-
-  struct list_elem *e = list_pop_back (&path->elem_list);
-  struct path_elem *elem = list_entry (e, struct path_elem, list_elem);
-  const char *name = elem->name;
-  free (elem);
-  return name;
 }

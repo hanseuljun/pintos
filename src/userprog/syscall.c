@@ -33,7 +33,7 @@ struct fd_info
 
 /* Map from fd values to file structs. */
 static struct fd_info *fd_info_map[FD_INFO_MAP_SIZE];
-static struct dir *current_dir;
+static struct path *current_path;
 
 struct lock global_filesys_lock;
 
@@ -70,10 +70,8 @@ static void run_dir_and_filename_func_with_path_str (const char *path_str, dir_a
 void
 syscall_init (void) 
 {
+  current_path = path_create ("/");
   lock_init (&global_filesys_lock);
-  lock_acquire (&global_filesys_lock);
-  current_dir = dir_open_root ();
-  lock_release (&global_filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -310,6 +308,7 @@ handle_remove (void *esp)
 static void
 handle_remove_dir_and_filename_func (struct dir *dir, const char *filename, void *aux)
 {
+  printf ("handle_remove_dir_and_filename_func - 1, filename: %s\n", filename);
   bool *result = aux;
   *result = filesys_remove (dir, filename);
 }
@@ -542,25 +541,14 @@ handle_munmap (void *esp)
 }
 #endif
 
-static void handle_chdir_dir_and_filename_func (struct dir *dir, const char *filename, void *aux);
-
 static bool
 handle_chdir (void *esp)
 {
   char *path_str = (char *) get_argument(esp, 1);
 
-  run_dir_and_filename_func_with_path_str (path_str, handle_chdir_dir_and_filename_func, NULL);
+  path_push_back (current_path, path_str);
 
   return true;
-}
-
-static void
-handle_chdir_dir_and_filename_func (struct dir *dir, const char *filename, void *aux UNUSED)
-{
-  if (filename == NULL)
-    current_dir = dir_reopen (dir);
-  else
-    current_dir = filesys_open_dir (dir, filename);
 }
 
 static void handle_mkdir_dir_and_filename_func (struct dir *dir, const char *filename, void *aux);
@@ -661,8 +649,20 @@ is_fd_for_file (int fd)
 static void
 run_dir_and_filename_func_with_path_str (const char *path_str, dir_and_filename_func *func, void *aux)
 {
-  struct path *path = path_create (path_str);
-  const char *filename = path_pop_back (path);
+  struct path *path;
+  if (path_str[0] == '/')
+    {
+      path = path_create (path_str);
+    }
+  else
+  {
+    path = path_copy (current_path);
+    path_push_back (path, path_str);
+  }
+
+  printf ("run_dir_and_filename_func_with_path_str - 1, path: %s\n", path_get_string (path));
+
+  char *filename = path_pop_back (path);
   struct dir *dir = path_get_dir (path);
 
   lock_acquire (&global_filesys_lock);
