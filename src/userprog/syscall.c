@@ -380,7 +380,7 @@ handle_open (void *esp)
   fd_info->file = file;
   fd_info->pid = thread_tid ();
   struct inode *inode = file_get_inode (file);
-  if (inode != NULL && inode_is_dir (inode))
+  if (inode != NULL)
     {
       fd_info->dir = dir_open (inode_reopen (inode));
     }
