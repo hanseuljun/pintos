@@ -665,22 +665,10 @@ handle_readdir (void *esp)
 static bool
 handle_isdir (void *esp)
 {
-  char *path_str = (char *) get_argument(esp, 1);
+  int fd = (int) get_argument(esp, 1);
 
-  lock_acquire (&global_filesys_lock);
-
-  struct path *new_path = path_copy (current_path);
-  path_push_back (new_path, path_str);
-  path_sanitize (new_path);
-
-  struct dir *dir = path_get_dir (new_path);
-  bool exists = dir != NULL;
-  dir_close (dir);
-  path_release (new_path);
-
-  lock_release (&global_filesys_lock);
-
-  return exists;
+  struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  return fd_info->dir != NULL;
 }
 
 static int
