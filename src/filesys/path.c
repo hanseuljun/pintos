@@ -131,9 +131,15 @@ path_sanitize (struct path *path)
       if (strcmp (elem->name, ".") == 0)
         {
           e = list_remove (e);
-          continue;
         }
-      e = list_next (e);
+      else if (strcmp (elem->name, "..") == 0)
+        {
+          e = list_remove (list_remove (e->prev));
+        }
+      else
+        {
+          e = list_next (e);
+        }
     }
 }
 

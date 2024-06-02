@@ -590,6 +590,7 @@ handle_chdir (void *esp)
 
   struct path *new_path = path_copy (current_path);
   path_push_back (new_path, path_str);
+  path_sanitize (new_path);
   char *filename = path_pop_back (new_path);
 
   lock_acquire (&global_filesys_lock);
