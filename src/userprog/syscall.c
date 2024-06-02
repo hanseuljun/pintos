@@ -348,8 +348,6 @@ static int
 handle_open (void *esp)
 {
   const char *path_str = (const char *) get_argument(esp, 1);
-  struct file *file;
-  struct fd_info *fd_info;
 
   /* Exit when path is pointing an invalid address. */
   if (!is_uaddr_valid (path_str))
@@ -369,6 +367,7 @@ handle_open (void *esp)
       return -1;
     }
 
+  struct file *file = NULL;
   run_dir_and_filename_func_with_path_str (path_str, handle_open_dir_and_filename_func, &file);
 
   if (file == NULL)
@@ -376,7 +375,7 @@ handle_open (void *esp)
 
   int fd = find_available_fd ();
 
-  fd_info = malloc (sizeof *fd_info);
+  struct fd_info *fd_info = malloc (sizeof *fd_info);
   fd_info->file = file;
   fd_info->pid = thread_tid ();
   struct inode *inode = file_get_inode (file);
@@ -398,9 +397,13 @@ handle_open_dir_and_filename_func (struct dir *dir, const char *filename, void *
 {
   struct file **result = aux;
   if (filename == NULL || (strcmp (filename, ".") == 0))
-    *result = file_open (dir_get_inode (dir));
+    {
+      *result = file_open (inode_reopen (dir_get_inode (dir)));
+    }
   else
-    *result = filesys_open_file (dir, filename);
+    {
+      *result = filesys_open_file (dir, filename);
+    }
 }
 
 static int
