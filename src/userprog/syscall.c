@@ -588,33 +588,29 @@ handle_chdir (void *esp)
 {
   char *path_str = (char *) get_argument(esp, 1);
 
+  lock_acquire (&global_filesys_lock);
+
   struct path *new_path = path_copy (current_path);
   path_push_back (new_path, path_str);
   path_sanitize (new_path);
-  char *filename = path_pop_back (new_path);
-
-  lock_acquire (&global_filesys_lock);
 
   struct dir *dir = path_get_dir (new_path);
-  struct inode *inode = NULL;
-  if (dir != NULL)
-    dir_lookup (dir, filename, &inode);
+  bool exists = dir != NULL;
+  dir_close (dir);
 
-  if (inode == NULL)
+  if (exists)
     {
-      path_release (new_path);
-      lock_release (&global_filesys_lock);
-      return false;
-    }
-  else
-    {
-      path_push_back (new_path, filename);
-      inode_close (inode);
       struct path *prev_path = current_path;
       current_path = new_path;
       path_release (prev_path);
       lock_release (&global_filesys_lock);
       return true;
+    }
+  else
+    {
+      path_release (new_path);
+      lock_release (&global_filesys_lock);
+      return false;
     }
 }
 
