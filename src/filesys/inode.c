@@ -294,7 +294,7 @@ inode_length (const struct inode *inode)
 }
 
 bool
-inode_isdir (struct inode *inode)
+inode_is_dir (struct inode *inode)
 {
   unsigned magic;
   inode_read_at (inode, &magic, sizeof (magic), 0);

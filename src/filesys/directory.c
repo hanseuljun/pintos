@@ -31,6 +31,7 @@ dir_create (block_sector_t sector, size_t entry_cnt)
 
   struct inode *inode = inode_open (sector);
   unsigned magic = DIR_MAGIC;
+  // ASSERT (inode_write_at (inode, &magic, sizeof (magic), 0) == sizeof (magic));
   inode_write_at (inode, &magic, sizeof (magic), 0);
   inode_close (inode);
 
@@ -45,6 +46,7 @@ dir_open (struct inode *inode)
   struct dir *dir = calloc (1, sizeof *dir);
   if (inode != NULL && dir != NULL)
     {
+      // ASSERT (inode_is_dir (inode));
       dir->inode = inode;
       /* Set position to right after the magic number. */
       dir->pos = sizeof (unsigned);
@@ -242,4 +244,19 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
         } 
     }
   return false;
+}
+
+size_t dir_children_count (const struct dir *dir)
+{
+  struct dir_entry e;
+  size_t ofs;
+  size_t count = 0;
+
+  ASSERT (dir != NULL);
+
+  for (ofs = 0; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
+       ofs += sizeof e)
+    if (e.in_use)
+      count++;
+  return count;
 }

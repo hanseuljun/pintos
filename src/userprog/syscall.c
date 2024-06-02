@@ -309,6 +309,29 @@ static void
 handle_remove_dir_and_filename_func (struct dir *dir, const char *filename, void *aux)
 {
   bool *result = aux;
+  bool has_children = false;
+
+  struct inode *inode = NULL;
+  dir_lookup (dir, filename, &inode);
+
+  if (inode_is_dir (inode))
+    {
+      struct dir *child_dir = dir_open (inode);
+      has_children = dir_children_count (child_dir) > 0;
+      dir_close (child_dir);
+    }
+  else
+    {
+      inode_close (inode);
+    }
+
+  /* dir-rm-parent has a comment saying a non-empty directory should not be removed. */
+  if (has_children)
+    {
+      *result = false;
+      return;
+    }
+
   *result = filesys_remove (dir, filename);
 }
 
@@ -428,7 +451,7 @@ handle_write (void *esp)
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
   lock_acquire (&global_filesys_lock);
   int result;
-  if (inode_isdir (file_get_inode (fd_info->file)))
+  if (inode_is_dir (file_get_inode (fd_info->file)))
     result = -1;
   else
     result = file_write (fd_info->file, buffer, size);
