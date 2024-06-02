@@ -653,11 +653,13 @@ run_dir_and_filename_func_with_path_str (const char *path_str, dir_and_filename_
   if (path_str[0] == '/')
     {
       path = path_create (path_str);
+      path_sanitize (path);
     }
   else
   {
     path = path_copy (current_path);
     path_push_back (path, path_str);
+    path_sanitize (path);
   }
 
   printf ("run_dir_and_filename_func_with_path_str - 1, path: %s\n", path_get_string (path));

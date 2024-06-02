@@ -10,6 +10,7 @@ struct path *path_copy(struct path *path);
 struct dir *path_get_dir(struct path *path);
 void path_push_back(struct path *path, const char *str);
 char *path_pop_back(struct path *path);
+void path_sanitize (struct path *path);
 char *path_get_string(struct path *path);
 
 #endif /* filesys/path.h */

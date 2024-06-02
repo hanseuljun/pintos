@@ -121,6 +121,22 @@ path_pop_back(struct path *path)
   return name;
 }
 
+void
+path_sanitize (struct path *path)
+{
+  struct list_elem *e = list_begin (&path->elem_list);
+  while (e != list_end (&path->elem_list))
+    {
+      struct path_elem *elem = list_entry (e, struct path_elem, list_elem);
+      if (strcmp (elem->name, ".") == 0)
+        {
+          e = list_remove (e);
+          continue;
+        }
+      e = list_next (e);
+    }
+}
+
 char *path_get_string(struct path *path)
 {
   if (list_empty (&path->elem_list))
