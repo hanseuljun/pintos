@@ -29,6 +29,7 @@ struct fd_info
 {
   struct file *file;
   int pid;             /* pid of the process that opened this file. */
+  struct dir *dir;
 };
 
 /* Map from fd values to file structs. */
@@ -378,6 +379,15 @@ handle_open (void *esp)
   fd_info = malloc (sizeof *fd_info);
   fd_info->file = file;
   fd_info->pid = thread_tid ();
+  struct inode *inode = file_get_inode (file);
+  if (inode != NULL && inode_is_dir (inode))
+    {
+      fd_info->dir = dir_open (inode_reopen (inode));
+    }
+  else
+    {
+      fd_info->dir = NULL;
+    }
 
   fd_info_map[fd - FD_BASE] = fd_info;
   return fd;
@@ -528,6 +538,7 @@ handle_close (void *esp)
 
   lock_acquire (&global_filesys_lock);
   file_close (fd_info->file);
+  dir_close (fd_info->dir);
   lock_release (&global_filesys_lock);
   fd_info_map[fd - FD_BASE] = NULL;
   free (fd_info);
@@ -635,10 +646,9 @@ handle_readdir (void *esp)
 
   struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
   lock_acquire (&global_filesys_lock);
-  struct inode *inode = inode_reopen (file_get_inode (fd_info->file));
-  struct dir *dir = dir_open (inode);
-  bool success = dir_readdir (dir, name);
-  dir_close (dir);
+  bool success = false;
+  if (fd_info->dir != NULL)
+    success = dir_readdir (fd_info->dir, name);
   lock_release (&global_filesys_lock);
 
   return success;

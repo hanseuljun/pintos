@@ -171,7 +171,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   off_t bytes_read = 0;
 
   lock_acquire (fs_cache_get_lock ());
-  while (size > 0) 
+  while (size > 0)
     {
       /* Disk sector to read, starting byte offset within sector. */
       block_sector_t sector_idx = inode_data_sector (inode->data, offset);
