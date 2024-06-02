@@ -428,6 +428,7 @@ inode_data_length (const struct inode_data *inode_data)
 block_sector_t
 inode_data_sector (const struct inode_data *inode_data, off_t pos) 
 {
+  ASSERT (inode_data != NULL);
   if (pos < inode_data->direct_inode_disk.length)
     {
       size_t index = pos / BLOCK_SECTOR_SIZE;

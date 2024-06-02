@@ -624,7 +624,24 @@ handle_mkdir (void *esp)
 static bool
 handle_readdir (void *esp)
 {
-  return false;
+  int fd = (int) get_argument(esp, 1);
+  char *name = (char *) get_argument(esp, 2);
+
+  if (!is_fd_for_file (fd))
+    {
+      syscall_exit (-1);
+      NOT_REACHED ();
+    }
+
+  struct fd_info *fd_info = fd_info_map[fd - FD_BASE];
+  lock_acquire (&global_filesys_lock);
+  struct inode *inode = inode_reopen (file_get_inode (fd_info->file));
+  struct dir *dir = dir_open (inode);
+  bool success = dir_readdir (dir, name);
+  dir_close (dir);
+  lock_release (&global_filesys_lock);
+
+  return success;
 }
 
 static int
