@@ -309,8 +309,14 @@ static void
 handle_remove_dir_and_filename_func (struct dir *dir, const char *filename, void *aux)
 {
   bool *result = aux;
-  bool has_children = false;
 
+  if (filename == NULL)
+    {
+      *result = false;
+      return;
+    }
+
+  bool has_children = false;
   struct inode *inode = NULL;
   dir_lookup (dir, filename, &inode);
 
