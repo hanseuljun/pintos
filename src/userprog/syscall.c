@@ -574,9 +574,33 @@ handle_chdir (void *esp)
 {
   char *path_str = (char *) get_argument(esp, 1);
 
-  path_push_back (current_path, path_str);
+  struct path *new_path = path_copy (current_path);
+  path_push_back (new_path, path_str);
+  char *filename = path_pop_back (new_path);
 
-  return true;
+  lock_acquire (&global_filesys_lock);
+
+  struct dir *dir = path_get_dir (new_path);
+  struct inode *inode = NULL;
+  if (dir != NULL)
+    dir_lookup (dir, filename, &inode);
+
+  if (inode == NULL)
+    {
+      path_release (new_path);
+      lock_release (&global_filesys_lock);
+      return false;
+    }
+  else
+    {
+      path_push_back (new_path, filename);
+      inode_close (inode);
+      struct path *prev_path = current_path;
+      current_path = new_path;
+      path_release (prev_path);
+      lock_release (&global_filesys_lock);
+      return true;
+    }
 }
 
 static void handle_mkdir_dir_and_filename_func (struct dir *dir, const char *filename, void *aux);
