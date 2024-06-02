@@ -66,7 +66,7 @@ static bool is_uaddr_valid (const void *uaddr);
 static bool is_fd_for_file (int fd);
 
 typedef void dir_and_filename_func (struct dir *dir, const char *filename, void *aux);
-static void run_dir_and_filename_func_with_path_str (const char *path_str, dir_and_filename_func *func, void *aux);
+static bool run_dir_and_filename_func_with_path_str (const char *path_str, dir_and_filename_func *func, void *aux);
 
 void
 syscall_init (void) 
@@ -264,7 +264,8 @@ handle_create (void *esp)
 
   struct handle_create_dir_and_filename_aux aux;
   aux.initial_size = initial_size;
-  run_dir_and_filename_func_with_path_str (path_str, handle_create_dir_and_filename_func, &aux);
+  if (!run_dir_and_filename_func_with_path_str (path_str, handle_create_dir_and_filename_func, &aux))
+    return false;
 
   return aux.success;
 }
@@ -301,7 +302,8 @@ handle_remove (void *esp)
     }
 
   bool success;
-  run_dir_and_filename_func_with_path_str (path_str, handle_remove_dir_and_filename_func, &success);
+  if (!run_dir_and_filename_func_with_path_str (path_str, handle_remove_dir_and_filename_func, &success))
+    return false;
 
   return success;
 }
@@ -368,7 +370,8 @@ handle_open (void *esp)
     }
 
   struct file *file = NULL;
-  run_dir_and_filename_func_with_path_str (path_str, handle_open_dir_and_filename_func, &file);
+  if (!run_dir_and_filename_func_with_path_str (path_str, handle_open_dir_and_filename_func, &file))
+    return -1;
 
   if (file == NULL)
     return -1;
@@ -627,7 +630,8 @@ handle_mkdir (void *esp)
     }
 
   bool success;
-  run_dir_and_filename_func_with_path_str (path_str, handle_mkdir_dir_and_filename_func, &success);
+  if (!run_dir_and_filename_func_with_path_str (path_str, handle_mkdir_dir_and_filename_func, &success))
+    return false;
 
   return success;
 }
@@ -725,7 +729,7 @@ is_fd_for_file (int fd)
   return (fd >= FD_BASE) && (fd < (FD_BASE + FD_INFO_MAP_SIZE));
 }
 
-static void
+static bool
 run_dir_and_filename_func_with_path_str (const char *path_str, dir_and_filename_func *func, void *aux)
 {
   struct path *path;
@@ -736,6 +740,15 @@ run_dir_and_filename_func_with_path_str (const char *path_str, dir_and_filename_
     }
   else
   {
+    lock_acquire (&global_filesys_lock);
+    struct dir *dir = path_get_dir (current_path);
+    bool exists = dir != NULL;
+    dir_close (dir);
+    lock_release (&global_filesys_lock);
+
+    if (!exists)
+      return false;
+
     path = path_copy (current_path);
     path_push_back (path, path_str);
     path_sanitize (path);
@@ -753,4 +766,6 @@ run_dir_and_filename_func_with_path_str (const char *path_str, dir_and_filename_
 
   free (filename);
   path_release (path);
+
+  return true;
 }
