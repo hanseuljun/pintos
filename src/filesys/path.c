@@ -47,13 +47,16 @@ path_create (const char *path_str)
 void
 path_release(struct path *path)
 {
-  for (struct list_elem *e = list_begin (&path->elem_list); e != list_end (&path->elem_list);
-       e = list_next (e))
+  struct list_elem *e;
+  while (!list_empty (&path->elem_list))
     {
+      e = list_pop_front (&path->elem_list);
       struct path_elem *elem = list_entry (e, struct path_elem, list_elem);
+
       free (elem->name);
       free (elem);
     }
+
   free (path);
 }
 
