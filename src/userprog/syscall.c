@@ -308,7 +308,6 @@ handle_remove (void *esp)
 static void
 handle_remove_dir_and_filename_func (struct dir *dir, const char *filename, void *aux)
 {
-  printf ("handle_remove_dir_and_filename_func - 1, filename: %s\n", filename);
   bool *result = aux;
   *result = filesys_remove (dir, filename);
 }
@@ -661,8 +660,6 @@ run_dir_and_filename_func_with_path_str (const char *path_str, dir_and_filename_
     path_push_back (path, path_str);
     path_sanitize (path);
   }
-
-  printf ("run_dir_and_filename_func_with_path_str - 1, path: %s\n", path_get_string (path));
 
   char *filename = path_pop_back (path);
   struct dir *dir = path_get_dir (path);
