@@ -369,6 +369,7 @@ inode_data_extend (struct inode_data *inode_data, off_t length)
             return false;
 
           inode_data->parent_doubly_indirect_inode_disk.sectors[parent_index] = sector;
+          inode_data->children_doubly_indirect_inode_disk[parent_index] = malloc (sizeof (struct indirect_inode_disk));
           inode_data->children_doubly_indirect_inode_disk[parent_index]->magic = INODE_MAGIC;
           memcpy (fs_cache_get_buffer (sector), &inode_data->children_doubly_indirect_inode_disk[parent_index], BLOCK_SECTOR_SIZE);
           fs_cache_write (sector);
