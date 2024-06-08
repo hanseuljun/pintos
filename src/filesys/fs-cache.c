@@ -58,10 +58,8 @@ void fs_cache_done (void)
       e = list_pop_front (&buffer_list);
       struct fs_cache_elem *elem = list_entry (e, struct fs_cache_elem, list_elem);
 
-      /* Figured that it is impossible to write back to the hard drive when
-         the system is shutting down. Remove below if that becomes clear. */
-      // if (elem->should_write)
-        // block_write (fs_device, elem->sector_idx, elem->buffer);
+      if (elem->should_write)
+        block_write (fs_device, elem->sector_idx, elem->buffer);
 
       free (elem->buffer);
       free (elem);
